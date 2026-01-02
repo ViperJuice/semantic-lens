@@ -1,0 +1,98 @@
+{
+  "version": "v1.0",
+  "generated_at": "2024-01-15T10:30:00Z",
+  "nodes": [
+    {
+      "node_id": "node_src_12345678",
+      "kind": "function",
+      "name": "sourceFunc",
+      "language": "typescript",
+      "file": "test.ts",
+      "span": [0, 100]
+    },
+    {
+      "node_id": "node_dst_87654321",
+      "kind": "function",
+      "name": "destFunc",
+      "language": "typescript",
+      "file": "test.ts",
+      "span": [100, 200]
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "edge_defines_0001",
+      "kind": "defines",
+      "src": "node_src_12345678",
+      "dst": "node_dst_87654321",
+      "confidence": 0.9,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge_imports_0002",
+      "kind": "imports",
+      "src": "node_src_12345678",
+      "dst": "node_dst_87654321",
+      "confidence": 1.0,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge_calls_00003",
+      "kind": "calls",
+      "src": "node_src_12345678",
+      "dst": "node_dst_87654321",
+      "confidence": 0.85,
+      "evidence": ["lsp"]
+    },
+    {
+      "edge_id": "edge_inherits_004",
+      "kind": "inherits",
+      "src": "node_src_12345678",
+      "dst": "node_dst_87654321",
+      "confidence": 1.0,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge_implements05",
+      "kind": "implements",
+      "src": "node_src_12345678",
+      "dst": "node_dst_87654321",
+      "confidence": 1.0,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge_uses_000006",
+      "kind": "uses",
+      "src": "node_src_12345678",
+      "dst": "node_dst_87654321",
+      "confidence": 0.7,
+      "evidence": ["heuristic"]
+    },
+    {
+      "edge_id": "edge_reads_00007",
+      "kind": "reads",
+      "src": "node_src_12345678",
+      "dst": "node_dst_87654321",
+      "confidence": 0.8,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge_writes_0008",
+      "kind": "writes",
+      "src": "node_src_12345678",
+      "dst": "node_dst_87654321",
+      "confidence": 0.75,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge_throws_0009",
+      "kind": "throws",
+      "src": "node_src_12345678",
+      "dst": "node_dst_87654321",
+      "confidence": 0.6,
+      "evidence": ["llm_score"]
+    }
+  ],
+  "annotations": [],
+  "patterns": []
+}

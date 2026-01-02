@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "generated_at": "not-a-valid-date",
+  "nodes": [
+    {
+      "node_id": "short",
+      "kind": "invalid_kind",
+      "name": "TestNode",
+      "language": "typescript",
+      "file": "test.ts",
+      "span": [0, 100]
+    },
+    {
+      "node_id": "missing_required_fields"
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "edge12345678",
+      "kind": "calls",
+      "src": "node1",
+      "dst": "node2",
+      "confidence": 1.5,
+      "evidence": []
+    }
+  ]
+}

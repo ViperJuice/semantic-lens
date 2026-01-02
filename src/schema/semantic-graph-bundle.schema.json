@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://consiliency.dev/schemas/semantic-graph-bundle.schema.json",
+  "title": "SemanticGraphBundle",
+  "description": "A semantic graph bundle containing nodes, edges, annotations, and patterns extracted from code analysis",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "generated_at", "nodes", "edges", "annotations", "patterns"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^v\\d+\\.\\d+$",
+      "description": "Schema version in format vN.N"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the bundle was generated"
+    },
+    "repo": {
+      "$ref": "#/$defs/Repo"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Node"
+      },
+      "description": "All nodes in the semantic graph"
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Edge"
+      },
+      "description": "All edges connecting nodes in the graph"
+    },
+    "annotations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Annotation"
+      },
+      "description": "Annotations attached to nodes"
+    },
+    "patterns": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PatternInstance"
+      },
+      "description": "Detected pattern instances in the codebase"
+    }
+  },
+  "$defs": {
+    "Repo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "commit"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "Repository URL"
+        },
+        "commit": {
+          "type": "string",
+          "minLength": 7,
+          "description": "Git commit hash (at least 7 characters)"
+        },
+        "branch": {
+          "type": "string",
+          "description": "Git branch name"
+        }
+      }
+    },
+    "Node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node_id", "kind", "name", "language", "file", "span"],
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "minLength": 8,
+          "description": "Unique identifier for the node (at least 8 characters)"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "module",
+            "class",
+            "interface",
+            "trait",
+            "function",
+            "method",
+            "field",
+            "property"
+          ],
+          "description": "The kind of code element this node represents"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the code element"
+        },
+        "language": {
+          "type": "string",
+          "description": "Programming language of the code element"
+        },
+        "file": {
+          "type": "string",
+          "description": "File path where the element is defined"
+        },
+        "span": {
+          "$ref": "#/$defs/Span"
+        },
+        "parent": {
+          "type": "string",
+          "description": "Parent node ID for nested elements"
+        },
+        "route": {
+          "type": "string",
+          "description": "Fully qualified path to the element"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["public", "protected", "private", "unknown"],
+          "description": "Access visibility of the element"
+        },
+        "signature": {
+          "type": "string",
+          "description": "Type signature for functions/methods"
+        },
+        "doc_hash": {
+          "type": "string",
+          "description": "Hash of documentation content for change detection"
+        }
+      }
+    },
+    "Edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["edge_id", "kind", "src", "dst", "confidence", "evidence"],
+      "properties": {
+        "edge_id": {
+          "type": "string",
+          "minLength": 8,
+          "description": "Unique identifier for the edge (at least 8 characters)"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "defines",
+            "imports",
+            "calls",
+            "inherits",
+            "implements",
+            "uses",
+            "reads",
+            "writes",
+            "throws"
+          ],
+          "description": "The kind of relationship this edge represents"
+        },
+        "src": {
+          "type": "string",
+          "description": "Source node ID"
+        },
+        "dst": {
+          "type": "string",
+          "description": "Destination node ID"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score from 0.0 to 1.0"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["chunker", "lsp", "static_analysis", "heuristic", "llm_score"]
+          },
+          "minItems": 1,
+          "description": "Sources of evidence for this relationship"
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional metadata for the edge"
+        }
+      }
+    },
+    "Annotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_id", "tags"],
+      "properties": {
+        "target_id": {
+          "type": "string",
+          "description": "ID of the node this annotation targets"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of tags for this annotation"
+        },
+        "kv": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "type": "boolean" },
+              { "type": "null" }
+            ]
+          },
+          "description": "Key-value pairs for additional annotation data"
+        }
+      }
+    },
+    "PatternInstance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instance_id", "pattern_id", "roles", "confidence", "evidence"],
+      "properties": {
+        "instance_id": {
+          "type": "string",
+          "description": "Unique identifier for this pattern instance"
+        },
+        "pattern_id": {
+          "type": "string",
+          "description": "Identifier of the pattern template"
+        },
+        "roles": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Mapping of role names to node IDs"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score from 0.0 to 1.0"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Evidence descriptions for this pattern match"
+        },
+        "explain": {
+          "type": "string",
+          "description": "Human-readable explanation of the pattern match"
+        }
+      }
+    },
+    "Span": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "Character offset span as [start, end]"
+    }
+  }
+}

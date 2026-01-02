@@ -1,0 +1,73 @@
+{
+  "version": "v1.0",
+  "generated_at": "2024-01-15T10:30:00Z",
+  "nodes": [
+    {
+      "node_id": "node_module_00000001",
+      "kind": "module",
+      "name": "TestModule",
+      "language": "typescript",
+      "file": "test.ts",
+      "span": [0, 1000]
+    },
+    {
+      "node_id": "node_class_000000002",
+      "kind": "class",
+      "name": "TestClass",
+      "language": "typescript",
+      "file": "test.ts",
+      "span": [10, 200]
+    },
+    {
+      "node_id": "node_interface_0003",
+      "kind": "interface",
+      "name": "TestInterface",
+      "language": "typescript",
+      "file": "test.ts",
+      "span": [210, 300]
+    },
+    {
+      "node_id": "node_trait_00000004",
+      "kind": "trait",
+      "name": "TestTrait",
+      "language": "rust",
+      "file": "test.rs",
+      "span": [0, 100]
+    },
+    {
+      "node_id": "node_function_00005",
+      "kind": "function",
+      "name": "testFunction",
+      "language": "typescript",
+      "file": "test.ts",
+      "span": [310, 400]
+    },
+    {
+      "node_id": "node_method_000006",
+      "kind": "method",
+      "name": "testMethod",
+      "language": "typescript",
+      "file": "test.ts",
+      "span": [50, 100]
+    },
+    {
+      "node_id": "node_field_0000007",
+      "kind": "field",
+      "name": "testField",
+      "language": "typescript",
+      "file": "test.ts",
+      "span": [20, 40]
+    },
+    {
+      "node_id": "node_property_0008",
+      "kind": "property",
+      "name": "testProperty",
+      "language": "typescript",
+      "file": "test.ts",
+      "span": [110, 150]
+    }
+  ],
+  "edges": [],
+  "annotations": [],
+  "patterns": []
+}

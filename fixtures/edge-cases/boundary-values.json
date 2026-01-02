@@ -1,0 +1,39 @@
+{
+  "version": "v99.99",
+  "generated_at": "2099-12-31T23:59:59Z",
+  "nodes": [
+    {
+      "node_id": "exactlyeight",
+      "kind": "module",
+      "name": "",
+      "language": "",
+      "file": "",
+      "span": [0, 0]
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "edgeeight",
+      "kind": "defines",
+      "src": "exactlyeight",
+      "dst": "exactlyeight",
+      "confidence": 0,
+      "evidence": ["chunker"]
+    },
+    {
+      "edge_id": "edgeeigh2",
+      "kind": "calls",
+      "src": "exactlyeight",
+      "dst": "exactlyeight",
+      "confidence": 1,
+      "evidence": ["lsp", "static_analysis", "heuristic", "llm_score", "chunker"]
+    }
+  ],
+  "annotations": [
+    {
+      "target_id": "exactlyeight",
+      "tags": []
+    }
+  ],
+  "patterns": []
+}
