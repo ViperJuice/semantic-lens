@@ -24,9 +24,14 @@
     "ajv": "^8.12.0",
     "ajv-draft-04": "^1.0.0",
     "ajv-formats": "^2.1.1",
+    "cors": "^2.8.5",
+    "elkjs": "^0.9.3",
+    "express": "^4.18.2",
     "yaml": "^2.8.2"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
     "@types/node": "^20.10.0",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
