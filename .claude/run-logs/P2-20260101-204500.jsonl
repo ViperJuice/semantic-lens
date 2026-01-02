@@ -1,0 +1,3 @@
+{"ts":"2026-01-01T20:45:14-05:00","run_id":"P2-20260101-204500","phase":"P2","lane":"-","task":"-","event":"phase_start","status":"ok"}
+{"ts":"2026-01-01T21:05:09-05:00","run_id":"P2-20260101-204500","phase":"P2","lane":"-","task":"-","event":"cross_lane_validation","status":"ok","cmd":"npm test -- tests/unit/graph/ --run","exit_code":0}
+{"ts":"2026-01-01T21:05:09-05:00","run_id":"P2-20260101-204500","phase":"P2","lane":"-","task":"-","event":"phase_done","status":"ok"}
