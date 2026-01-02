@@ -438,3 +438,25 @@ export class DSLParser {
 export function createDSLParser(): DSLParser {
   return new DSLParser();
 }
+
+/**
+ * Parse a single YAML pattern definition string.
+ * Convenience function that creates a parser and parses a single pattern.
+ * @param yaml - YAML string defining a single pattern
+ * @returns The parsed PatternDefinition
+ * @throws Error if parsing fails or YAML contains multiple patterns
+ */
+export function parsePatternDefinition(yaml: string): PatternDefinition {
+  const parser = new DSLParser();
+  const patterns = parser.parse(yaml);
+
+  if (patterns.length === 0) {
+    throw new Error('No pattern definition found in YAML');
+  }
+
+  if (patterns.length > 1) {
+    throw new Error('Expected single pattern, found multiple. Use createDSLParser().parse() instead.');
+  }
+
+  return patterns[0]!;
+}

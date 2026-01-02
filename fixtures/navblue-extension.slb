@@ -1,0 +1,195 @@
+{
+  "version": "v1.0",
+  "generated_at": "2026-01-02T05:10:37.739952Z",
+  "repo": {
+    "url": "https://github.com/example/navblue-extension",
+    "commit": "abc1234",
+    "branch": "main"
+  },
+  "nodes": [
+    {
+      "node_id": "b11e40055be7d92df5153511efd67b1c3e6d92a2",
+      "kind": "module",
+      "name": "background",
+      "language": "typescript",
+      "file": "src/background.ts",
+      "span": [
+        0,
+        3000
+      ],
+      "route": "module:background",
+      "visibility": "public"
+    },
+    {
+      "node_id": "3594d8de4d9258c94209995cd49d5f26a1f5e3b4",
+      "kind": "module",
+      "name": "content",
+      "language": "typescript",
+      "file": "src/content.ts",
+      "span": [
+        0,
+        4500
+      ],
+      "route": "module:content",
+      "visibility": "public"
+    },
+    {
+      "node_id": "78c2c16ee1c9b0d9e7a0e5c0d152e1951d266984",
+      "kind": "class",
+      "name": "BamlAsyncClient",
+      "language": "typescript",
+      "file": "src/baml_client/async_client.ts",
+      "span": [
+        200,
+        2000
+      ],
+      "route": "module:baml_client::class_definition:BamlAsyncClient",
+      "visibility": "public"
+    },
+    {
+      "node_id": "61d02bc236cadd4521715aac7c1e99c854505a1d",
+      "kind": "method",
+      "name": "sendRequest",
+      "language": "typescript",
+      "file": "src/baml_client/async_client.ts",
+      "span": [
+        400,
+        900
+      ],
+      "route": "module:baml_client::class_definition:BamlAsyncClient::method_definition:sendRequest",
+      "visibility": "public",
+      "signature": "(data: any) => Promise<Response>"
+    },
+    {
+      "node_id": "3141374e2b8671d0041025acd5605dc1697a66b3",
+      "kind": "function",
+      "name": "parseResponse",
+      "language": "typescript",
+      "file": "src/baml_client/parser.ts",
+      "span": [
+        100,
+        800
+      ],
+      "route": "module:baml_client::function_definition:parseResponse",
+      "visibility": "public",
+      "signature": "(raw: string) => ParsedResponse"
+    },
+    {
+      "node_id": "1273874d711719e94e0f45bfc54171c111f92240",
+      "kind": "interface",
+      "name": "ValidationRule",
+      "language": "typescript",
+      "file": "src/validation/rules.ts",
+      "span": [
+        0,
+        400
+      ],
+      "route": "module:validation::interface_declaration:ValidationRule",
+      "visibility": "public"
+    },
+    {
+      "node_id": "d14573e4b59107d4bff2b7c449f26508514f5c76",
+      "kind": "class",
+      "name": "RuleEngine",
+      "language": "typescript",
+      "file": "src/validation/rules.ts",
+      "span": [
+        500,
+        1500
+      ],
+      "route": "module:validation::class_definition:RuleEngine",
+      "visibility": "public"
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e_4673b7a70eb1",
+      "kind": "imports",
+      "src": "3594d8de4d9258c94209995cd49d5f26a1f5e3b4",
+      "dst": "78c2c16ee1c9b0d9e7a0e5c0d152e1951d266984",
+      "confidence": 1.0,
+      "evidence": [
+        "chunker"
+      ],
+      "meta": {}
+    },
+    {
+      "edge_id": "e_0da0143fff0d",
+      "kind": "calls",
+      "src": "61d02bc236cadd4521715aac7c1e99c854505a1d",
+      "dst": "3141374e2b8671d0041025acd5605dc1697a66b3",
+      "confidence": 0.95,
+      "evidence": [
+        "chunker"
+      ],
+      "meta": {}
+    },
+    {
+      "edge_id": "e_1018b453f555",
+      "kind": "implements",
+      "src": "d14573e4b59107d4bff2b7c449f26508514f5c76",
+      "dst": "1273874d711719e94e0f45bfc54171c111f92240",
+      "confidence": 1.0,
+      "evidence": [
+        "chunker"
+      ],
+      "meta": {}
+    },
+    {
+      "edge_id": "e_af955151f651",
+      "kind": "defines",
+      "src": "78c2c16ee1c9b0d9e7a0e5c0d152e1951d266984",
+      "dst": "61d02bc236cadd4521715aac7c1e99c854505a1d",
+      "confidence": 1.0,
+      "evidence": [
+        "chunker"
+      ],
+      "meta": {}
+    }
+  ],
+  "annotations": [
+    {
+      "target_id": "b11e40055be7d92df5153511efd67b1c3e6d92a2",
+      "tags": [
+        "type:module"
+      ]
+    },
+    {
+      "target_id": "3594d8de4d9258c94209995cd49d5f26a1f5e3b4",
+      "tags": [
+        "type:module"
+      ]
+    },
+    {
+      "target_id": "78c2c16ee1c9b0d9e7a0e5c0d152e1951d266984",
+      "tags": [
+        "type:class_definition"
+      ]
+    },
+    {
+      "target_id": "61d02bc236cadd4521715aac7c1e99c854505a1d",
+      "tags": [
+        "type:method_definition"
+      ]
+    },
+    {
+      "target_id": "3141374e2b8671d0041025acd5605dc1697a66b3",
+      "tags": [
+        "type:function_definition"
+      ]
+    },
+    {
+      "target_id": "1273874d711719e94e0f45bfc54171c111f92240",
+      "tags": [
+        "type:interface_declaration"
+      ]
+    },
+    {
+      "target_id": "d14573e4b59107d4bff2b7c449f26508514f5c76",
+      "tags": [
+        "type:class_definition"
+      ]
+    }
+  ],
+  "patterns": []
+}

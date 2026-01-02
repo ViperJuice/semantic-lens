@@ -1,0 +1,1771 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Semantic Lens - Graph Visualization</title>
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <!-- fCoSE layout and its dependencies -->
+  <script src="https://unpkg.com/layout-base@2.0.1/layout-base.js"></script>
+  <script src="https://unpkg.com/cose-base@2.2.0/cose-base.js"></script>
+  <script src="https://unpkg.com/cytoscape-fcose@2.2.0/cytoscape-fcose.js"></script>
+  <script src="https://unpkg.com/webcola@3.4.0/WebCola/cola.min.js"></script>
+  <script src="https://unpkg.com/cytoscape-cola@2.5.1/cytoscape-cola.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f8f9fa; color: #24292f; }
+
+    #app { display: flex; height: 100vh; }
+
+    /* Sidebar */
+    #sidebar {
+      width: 280px;
+      background: #ffffff;
+      border-right: 1px solid #d0d7de;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #sidebar h2 {
+      margin: 0;
+      padding: 16px;
+      font-size: 14px;
+      font-weight: 600;
+      border-bottom: 1px solid #d0d7de;
+      color: #0969da;
+    }
+
+    .sidebar-section {
+      padding: 12px 16px;
+      border-bottom: 1px solid #d0d7de;
+    }
+
+    .sidebar-section h3 {
+      margin: 0 0 8px 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: #57606a;
+      text-transform: uppercase;
+    }
+
+    /* Controls */
+    select, input, button {
+      width: 100%;
+      padding: 8px 12px;
+      margin: 4px 0;
+      font-size: 13px;
+      border-radius: 6px;
+      border: 1px solid #d0d7de;
+      background: #ffffff;
+      color: #24292f;
+    }
+
+    select:focus, input:focus { outline: none; border-color: #0969da; }
+
+    button {
+      background: #2da44e;
+      border-color: #2da44e;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    button:hover { background: #2c974b; }
+    button.secondary { background: #f6f8fa; border-color: #d0d7de; color: #24292f; }
+    button.secondary:hover { background: #f3f4f6; }
+
+    /* Auto-fit toggle button */
+    #autoFitToggle {
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      color: #57606a;
+    }
+    #autoFitToggle.active {
+      background: #dafbe1;
+      border-color: #2da44e;
+      color: #1a7f37;
+    }
+    #autoFitToggle:hover {
+      background: #f3f4f6;
+    }
+    #autoFitToggle.active:hover {
+      background: #aceebb;
+    }
+
+    /* Legend */
+    .legend-item {
+      display: flex;
+      align-items: center;
+      padding: 4px 0;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .legend-item:hover { color: #0969da; }
+    .legend-item.disabled { opacity: 0.4; }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      margin-right: 8px;
+    }
+    .legend-count {
+      margin-left: auto;
+      color: #57606a;
+      font-size: 11px;
+    }
+
+    /* File list */
+    #fileList {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    .file-item {
+      padding: 6px 8px;
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .file-item:hover { background: #f6f8fa; }
+    .file-item.selected { background: #ddf4ff; color: #0969da; }
+
+    /* Graph container */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #toolbar {
+      padding: 8px 16px;
+      background: #ffffff;
+      border-bottom: 1px solid #d0d7de;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    #toolbar button { width: auto; padding: 6px 12px; }
+    #toolbar .spacer { flex: 1; }
+    #stats { font-size: 12px; color: #57606a; }
+
+    #cy { flex: 1; }
+
+    /* Node info panel */
+    #nodeInfo {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      width: 320px;
+      background: #ffffff;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      padding: 16px;
+      display: none;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    #nodeInfo.visible { display: block; }
+    #nodeInfo h4 { margin: 0 0 8px 0; color: #0969da; font-size: 14px; }
+    #nodeInfo .info-row {
+      display: flex;
+      font-size: 12px;
+      padding: 4px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    #nodeInfo .info-label { color: #57606a; width: 80px; }
+    #nodeInfo .info-value { flex: 1; word-break: break-all; }
+    #nodeInfo .signature {
+      font-family: monospace;
+      font-size: 11px;
+      background: #f6f8fa;
+      padding: 8px;
+      border-radius: 4px;
+      margin-top: 8px;
+      overflow-x: auto;
+    }
+
+    /* Lens styles */
+    .lens-fade {
+      opacity: 0.12 !important;
+    }
+    #toolbar select {
+      width: auto;
+      padding: 6px 12px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="sidebar">
+      <h2>Semantic Lens</h2>
+
+      <div class="sidebar-section">
+        <h3>View</h3>
+        <select id="viewType">
+          <option value="full">All Nodes</option>
+          <option value="call_graph">Call Graph</option>
+          <option value="inheritance">Inheritance</option>
+          <option value="module_deps">Module Dependencies</option>
+        </select>
+        <select id="layoutType">
+          <option value="community">Community (recommended)</option>
+          <option value="hierarchy">Hierarchical (by file)</option>
+          <option value="cola">Force-directed (cola)</option>
+          <option value="grid">Grid</option>
+          <option value="circle">Circle (by file)</option>
+        </select>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Search</h3>
+        <input type="text" id="search" placeholder="Search nodes...">
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Node Types</h3>
+        <div id="legend"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Edge Types</h3>
+        <div id="edgeLegend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background: #3498db;"></div>
+            <span>defines</span>
+            <span class="legend-count" id="edgeDefines">0</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background: #9b59b6;"></div>
+            <span>implements</span>
+            <span class="legend-count" id="edgeImplements">0</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background: #2ecc71;"></div>
+            <span>uses</span>
+            <span class="legend-count" id="edgeUses">0</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background: #8b949e;"></div>
+            <span>sibling</span>
+            <span class="legend-count" id="edgeSibling">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Files</h3>
+      </div>
+      <div id="fileList"></div>
+    </div>
+
+    <div id="main">
+      <div id="toolbar">
+        <button onclick="loadView()">Refresh</button>
+        <button id="backBtn" class="secondary" style="display:none" onclick="showFullGraph()">Back</button>
+        <button id="fitBtn" class="secondary">Fit</button>
+        <button class="secondary" onclick="cy.zoom(cy.zoom() * 1.2)">Zoom +</button>
+        <button class="secondary" onclick="cy.zoom(cy.zoom() / 1.2)">Zoom -</button>
+        <button class="secondary" onclick="expandAll()">Expand All</button>
+        <button class="secondary" onclick="collapseAll()">Collapse All</button>
+        <button id="autoFitToggle" class="active" title="Auto-Fit: ON - Click to lock view">[ON] Auto-Fit</button>
+        <button id="connectivityToggle" class="secondary" title="Color by Connectivity">Color by Degree</button>
+        <select id="lensType" title="Analysis Lens">
+          <option value="default">Default View</option>
+          <option value="drift">Drift (Surprising)</option>
+          <option value="bridges">Bridges</option>
+          <option value="backbone">Backbone (k-core)</option>
+        </select>
+        <div class="spacer"></div>
+        <div id="stats"></div>
+      </div>
+      <div id="cy"></div>
+    </div>
+
+    <div id="nodeInfo">
+      <h4 id="infoName"></h4>
+      <div class="info-row"><span class="info-label">Kind</span><span class="info-value" id="infoKind"></span></div>
+      <div class="info-row"><span class="info-label">File</span><span class="info-value" id="infoFile"></span></div>
+      <div class="info-row"><span class="info-label">Visibility</span><span class="info-value" id="infoVisibility"></span></div>
+      <div class="signature" id="infoSignature"></div>
+    </div>
+  </div>
+
+  <script>
+    // Register fCoSE layout extension
+    if (typeof cytoscapeFcose !== 'undefined') {
+      cytoscape.use(cytoscapeFcose);
+    }
+
+    const API = 'http://localhost:3001';
+    let cy;
+    let allData = null;
+    let enabledKinds = new Set(['module', 'class', 'interface', 'function', 'method', 'field', 'property', 'trait']);
+    let selectedFile = null;
+    let autoFitEnabled = true;
+    let isZoomedIn = false;  // Track if we're in zoomed/focused view
+
+    // Node colors by kind
+    const kindColors = {
+      'module': '#e74c3c',
+      'class': '#3498db',
+      'interface': '#9b59b6',
+      'function': '#2ecc71',
+      'method': '#1abc9c',
+      'field': '#f39c12',
+      'property': '#e67e22',
+      'trait': '#e91e63'
+    };
+
+    const kindLabels = {
+      'module': 'Modules',
+      'class': 'Classes',
+      'interface': 'Interfaces',
+      'function': 'Functions',
+      'method': 'Methods',
+      'field': 'Fields',
+      'property': 'Properties',
+      'trait': 'Traits'
+    };
+
+    // Connectivity-based colorscale (isolated=faded, connected=prominent)
+    const connectivityColorscale = [
+      [0.0, '#e0e0e0'],  // light gray - isolated
+      [0.2, '#e8b4d9'],  // pale pink
+      [0.4, '#e066a0'],  // pink
+      [0.6, '#c41969'],  // magenta
+      [0.8, '#8b0a50'],  // dark magenta
+      [1.0, '#67001f']   // deep wine - hub nodes
+    ];
+
+    // Linear interpolation between two hex colors
+    function lerpColor(c1, c2, t) {
+      const r1 = parseInt(c1.slice(1,3), 16);
+      const g1 = parseInt(c1.slice(3,5), 16);
+      const b1 = parseInt(c1.slice(5,7), 16);
+      const r2 = parseInt(c2.slice(1,3), 16);
+      const g2 = parseInt(c2.slice(3,5), 16);
+      const b2 = parseInt(c2.slice(5,7), 16);
+      const r = Math.round(r1 + (r2-r1)*t);
+      const g = Math.round(g1 + (g2-g1)*t);
+      const b = Math.round(b1 + (b2-b1)*t);
+      return '#' + [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+    }
+
+    // Map normalized value (0-1) to colorscale
+    function interpolateColor(val, scale) {
+      if (val <= 0) return scale[0][1];
+      if (val >= 1) return scale[scale.length-1][1];
+      for (let i = 1; i < scale.length; i++) {
+        if (val <= scale[i][0]) {
+          const [leftPos, leftColor] = scale[i-1];
+          const [rightPos, rightColor] = scale[i];
+          const t = (val - leftPos) / (rightPos - leftPos);
+          return lerpColor(leftColor, rightColor, t);
+        }
+      }
+      return scale[scale.length-1][1];
+    }
+
+    // State for connectivity coloring
+    let colorByConnectivityEnabled = false;
+
+    // Color nodes by their degree (number of connections)
+    function colorByConnectivity() {
+      if (!cy) return;
+      const nodes = cy.nodes('.code');
+      const degrees = nodes.map(n => n.degree());
+      const maxDegree = Math.max(...degrees, 1);
+
+      nodes.forEach(node => {
+        const normalized = node.degree() / maxDegree;
+        node.style('background-color', interpolateColor(normalized, connectivityColorscale));
+      });
+    }
+
+    // Reset to original kind-based colors
+    function resetNodeColors() {
+      if (!cy) return;
+      cy.nodes('.code').forEach(node => {
+        const kind = node.data('kind');
+        node.style('background-color', kindColors[kind] || '#888');
+      });
+    }
+
+    // Mark suspicious nodes for data quality visualization
+    function markSuspiciousNodes() {
+      if (!cy) return;
+      cy.nodes().forEach(node => {
+        const kind = node.data('kind');
+        const degree = node.degree();
+        const hasParent = node.data('parent');
+        const parentExists = hasParent && cy.getElementById(hasParent).length > 0;
+
+        // Remove existing classes
+        node.removeClass('orphaned suspicious-isolated expected-isolated');
+
+        // Orphaned (has parent reference but parent missing from graph)
+        if (hasParent && !parentExists) {
+          node.addClass('orphaned');
+        }
+
+        // Suspicious isolated (function/method with no connections)
+        if (degree === 0 && (kind === 'function' || kind === 'method')) {
+          node.addClass('suspicious-isolated');
+        }
+
+        // Expected isolated (interface/type definitions)
+        if (degree === 0 && kind === 'interface') {
+          node.addClass('expected-isolated');
+        }
+      });
+    }
+
+    // ========================================
+    // COMMUNITY-BASED VISUALIZATION
+    // ========================================
+
+    // Edge weights by type - higher = stronger relationship
+    const EDGE_WEIGHTS = {
+      calls: 1.0,
+      imports: 0.4,
+      inherits: 0.7,
+      implements: 0.7,
+      uses: 0.5,
+      sibling: 0.1,
+      defines: 0.3
+    };
+
+    const HUB_THRESHOLD = 20;  // Nodes with degree > this are hubs
+    const MAX_ITERATIONS = 50;  // For community detection
+
+    // Get weighted edge value
+    function getEdgeWeight(edge) {
+      const kind = edge.data('kind') || 'uses';
+      const baseWeight = EDGE_WEIGHTS[kind] || 0.5;
+
+      // Apply hub penalty to source and target
+      const srcPenalty = getHubPenalty(edge.source());
+      const tgtPenalty = getHubPenalty(edge.target());
+
+      return baseWeight * srcPenalty * tgtPenalty;
+    }
+
+    // Penalize hub nodes to prevent them from dominating communities
+    function getHubPenalty(node) {
+      const degree = node.degree();
+      if (degree > HUB_THRESHOLD) {
+        return HUB_THRESHOLD / degree;  // Diminishing returns
+      }
+      return 1.0;
+    }
+
+    // Fisher-Yates shuffle for random iteration order
+    function shuffle(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // Label Propagation Community Detection
+    function detectCommunities() {
+      const nodes = cy.nodes('.code');
+      const labels = new Map();
+
+      // Initialize: each node in its own community
+      nodes.forEach((node, i) => labels.set(node.id(), i));
+
+      // Iterate until convergence
+      for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
+        let changed = false;
+        const nodeOrder = shuffle([...nodes]);  // Random order for stability
+
+        nodeOrder.forEach(node => {
+          const neighbors = node.neighborhood().nodes();
+          if (neighbors.length === 0) return;
+
+          // Count weighted votes from neighbors
+          const votes = new Map();
+          neighbors.forEach(neighbor => {
+            const edge = node.edgesWith(neighbor)[0];
+            const weight = edge ? getEdgeWeight(edge) : 0.5;
+            const label = labels.get(neighbor.id());
+            if (label !== undefined) {
+              votes.set(label, (votes.get(label) || 0) + weight);
+            }
+          });
+
+          // Find label with most votes
+          let bestLabel = labels.get(node.id());
+          let bestVotes = 0;
+          votes.forEach((v, l) => {
+            if (v > bestVotes) {
+              bestVotes = v;
+              bestLabel = l;
+            }
+          });
+
+          if (bestLabel !== labels.get(node.id())) {
+            labels.set(node.id(), bestLabel);
+            changed = true;
+          }
+        });
+
+        if (!changed) break;
+      }
+
+      // Normalize labels to sequential IDs
+      const uniqueLabels = [...new Set(labels.values())];
+      const labelMap = new Map(uniqueLabels.map((l, i) => [l, i]));
+      const normalized = new Map();
+      labels.forEach((label, nodeId) => {
+        normalized.set(nodeId, labelMap.get(label));
+      });
+
+      return normalized;
+    }
+
+    // Two-level community layout
+    function communityLayout() {
+      const params = getLayoutParams();
+      if (!params) return;
+
+      const communities = detectCommunities();
+
+      // Group nodes by community
+      const groups = new Map();
+      communities.forEach((communityId, nodeId) => {
+        if (!groups.has(communityId)) groups.set(communityId, []);
+        const node = cy.getElementById(nodeId);
+        if (node.length > 0) {
+          groups.get(communityId).push(node);
+        }
+      });
+
+      // Sort communities by size (largest first)
+      const sortedComms = [...groups.entries()]
+        .sort((a, b) => b[1].length - a[1].length);
+
+      // Macro layout: arrange community centroids on circle
+      const numComms = sortedComms.length;
+      if (numComms === 0) return;
+
+      sortedComms.forEach(([commId, nodes], index) => {
+        const angle = (2 * Math.PI * index / numComms) - Math.PI / 2;
+        const centroidX = params.centerX + params.mainRadius * Math.cos(angle);
+        const centroidY = params.centerY + params.mainRadius * Math.sin(angle);
+
+        // Micro layout: circular within community
+        if (nodes.length === 1) {
+          nodes[0].position({ x: centroidX, y: centroidY });
+        } else {
+          const subRadius = getSubCircleRadius(nodes.length, params);
+          nodes.forEach((node, i) => {
+            const nodeAngle = (2 * Math.PI * i / nodes.length);
+            node.position({
+              x: centroidX + subRadius * Math.cos(nodeAngle),
+              y: centroidY + subRadius * Math.sin(nodeAngle)
+            });
+          });
+        }
+      });
+
+      // Layout isolated nodes in outer ring
+      const isolated = cy.nodes('.code').filter(n => n.degree() === 0);
+      isolated.addClass('isolated');
+
+      if (isolated.length > 0) {
+        isolated.forEach((node, i) => {
+          const angle = (2 * Math.PI * i / isolated.length) + Math.PI / 6;
+          node.position({
+            x: params.centerX + params.outerRadius * Math.cos(angle),
+            y: params.centerY + params.outerRadius * Math.sin(angle)
+          });
+        });
+      }
+
+      cy.fit(undefined, 50);
+
+      // Return community count for stats
+      return { numCommunities: numComms, isolated: isolated.length };
+    }
+
+    // ========================================
+    // METRICS CALCULATION
+    // ========================================
+
+    // Simple BFS for betweenness approximation
+    function bfs(source) {
+      const distances = new Map();
+      const paths = new Map();
+      const queue = [source];
+      distances.set(source.id(), 0);
+      paths.set(source.id(), 1);
+
+      while (queue.length > 0) {
+        const current = queue.shift();
+        const currentDist = distances.get(current.id());
+
+        current.neighborhood().nodes().forEach(neighbor => {
+          if (!distances.has(neighbor.id())) {
+            distances.set(neighbor.id(), currentDist + 1);
+            paths.set(neighbor.id(), paths.get(current.id()));
+            queue.push(neighbor);
+          } else if (distances.get(neighbor.id()) === currentDist + 1) {
+            paths.set(neighbor.id(), paths.get(neighbor.id()) + paths.get(current.id()));
+          }
+        });
+      }
+
+      return { distances, paths };
+    }
+
+    // Approximate betweenness centrality (sampling-based for performance)
+    function calculateBetweenness() {
+      const betweenness = new Map();
+      const nodes = cy.nodes('.code');
+      nodes.forEach(n => betweenness.set(n.id(), 0));
+
+      // Sample ~20% of nodes as sources for BFS
+      const sampleSize = Math.min(50, Math.ceil(nodes.length * 0.2));
+      const sources = shuffle([...nodes]).slice(0, sampleSize);
+
+      sources.forEach(source => {
+        const { paths } = bfs(source);
+        paths.forEach((pathCount, nodeId) => {
+          betweenness.set(nodeId, betweenness.get(nodeId) + pathCount);
+        });
+      });
+
+      // Normalize
+      const max = Math.max(...betweenness.values(), 1);
+      betweenness.forEach((v, k) => betweenness.set(k, v / max));
+
+      return betweenness;
+    }
+
+    // Surprise score for edges - find unexpected coupling
+    function calculateSurpriseScores() {
+      const totalEdges = cy.edges().length;
+      if (totalEdges === 0) return new Map();
+
+      const surprises = new Map();
+
+      cy.edges().forEach(edge => {
+        const degA = edge.source().degree();
+        const degB = edge.target().degree();
+        const expected = (degA * degB) / (2 * totalEdges);
+        const observed = getEdgeWeight(edge);
+        const surprise = observed / Math.max(expected, 0.001);
+        surprises.set(edge.id(), surprise);
+      });
+
+      return surprises;
+    }
+
+    // ========================================
+    // LENSES
+    // ========================================
+
+    let currentLens = 'default';
+    let betweennessCache = null;
+    let surpriseCache = null;
+
+    function clearLensCache() {
+      betweennessCache = null;
+      surpriseCache = null;
+    }
+
+    function applyLens(lens) {
+      currentLens = lens;
+
+      // Reset styles
+      cy.nodes().removeClass('lens-highlight lens-fade');
+      cy.edges().removeClass('lens-highlight lens-fade');
+
+      switch (lens) {
+        case 'drift':
+          applyDriftLens();
+          break;
+        case 'bridges':
+          applyBridgesLens();
+          break;
+        case 'backbone':
+          applyBackboneLens();
+          break;
+        default:
+          // Default view - show everything
+          break;
+      }
+    }
+
+    function applyDriftLens() {
+      if (!surpriseCache) surpriseCache = calculateSurpriseScores();
+
+      // Highlight top 10% surprising edges
+      const sorted = [...surpriseCache.entries()].sort((a, b) => b[1] - a[1]);
+      const topN = Math.max(1, Math.ceil(sorted.length * 0.1));
+
+      sorted.slice(0, topN).forEach(([edgeId]) => {
+        const edge = cy.getElementById(edgeId);
+        if (edge.length > 0) {
+          edge.addClass('lens-highlight');
+          edge.source().addClass('lens-highlight');
+          edge.target().addClass('lens-highlight');
+        }
+      });
+
+      // Fade non-highlighted
+      cy.elements().not('.lens-highlight').addClass('lens-fade');
+    }
+
+    function applyBridgesLens() {
+      if (!betweennessCache) betweennessCache = calculateBetweenness();
+
+      // Highlight top 10 bridge nodes
+      const sorted = [...betweennessCache.entries()].sort((a, b) => b[1] - a[1]);
+      sorted.slice(0, 10).forEach(([nodeId]) => {
+        const node = cy.getElementById(nodeId);
+        if (node.length > 0) {
+          node.addClass('lens-highlight');
+          node.connectedEdges().addClass('lens-highlight');
+        }
+      });
+
+      cy.elements().not('.lens-highlight').addClass('lens-fade');
+    }
+
+    function applyBackboneLens() {
+      // Show k-core (nodes with at least k connections to other k-core nodes)
+      const k = 3;
+      let core = cy.nodes('.code').filter(n => n.degree() >= k);
+
+      // Iteratively remove nodes that don't have k neighbors in core
+      let changed = true;
+      while (changed) {
+        changed = false;
+        const newCore = core.filter(n => {
+          const coreNeighbors = n.neighborhood().nodes().intersection(core).length;
+          if (coreNeighbors < k) {
+            changed = true;
+            return false;
+          }
+          return true;
+        });
+        core = newCore;
+      }
+
+      if (core.length > 0) {
+        core.addClass('lens-highlight');
+        core.edgesWith(core).addClass('lens-highlight');
+      }
+      cy.elements().not('.lens-highlight').addClass('lens-fade');
+    }
+
+    // ========================================
+    // ORIGINAL HELPER FUNCTIONS
+    // ========================================
+
+    // Semantic zoom state
+    let zoomLevel = 0;  // 0=overview, 1=cluster expanded
+    let focusedCluster = null;
+    const ZOOM_THRESHOLD = 1.5;
+
+    // Debounce helper
+    function debounce(fn, delay) {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+      };
+    }
+
+    // Dynamic viewport-based sizing - all sizes scale with viewport
+    let layoutParams = null;
+
+    function getLayoutParams() {
+      const container = document.getElementById('cy');
+      if (!container) return null;
+      const minDim = Math.min(container.clientWidth, container.clientHeight);
+      const vu = minDim / 100;  // 1 vu = 1% of smaller dimension
+
+      return {
+        vu: vu,
+        nodeSize: Math.max(8, Math.round(1.5 * vu)),
+        isolatedNodeSize: Math.max(5, Math.round(1.0 * vu)),
+        labelFontSize: Math.max(9, Math.round(1.4 * vu)) + 'px',
+        mainRadius: 35 * vu,
+        subRadiusMin: 4 * vu,
+        subRadiusMax: 15 * vu,
+        subRadiusFactor: 1.2 * vu,
+        outerRadius: 52 * vu,
+        centerX: container.clientWidth / 2,
+        centerY: container.clientHeight / 2
+      };
+    }
+
+    // Get sub-circle radius based on node count
+    function getSubCircleRadius(nodeCount, params) {
+      const baseRadius = nodeCount * params.subRadiusFactor;
+      return Math.max(params.subRadiusMin, Math.min(params.subRadiusMax, baseRadius));
+    }
+
+    // Group connected nodes by file
+    function getFileGroups() {
+      const groups = {};
+      cy.nodes('.code').filter(n => n.degree() > 0).forEach(n => {
+        const file = n.data('file') || 'unknown';
+        if (!groups[file]) groups[file] = [];
+        groups[file].push(n);
+      });
+      return groups;
+    }
+
+    // Sort groups by connectivity to minimize edge crossings
+    function sortGroupsByConnectivity(groups) {
+      const fileNames = Object.keys(groups);
+      if (fileNames.length <= 2) return fileNames;
+
+      // Calculate inter-group edge counts
+      const groupEdges = {};
+      fileNames.forEach(f1 => {
+        groupEdges[f1] = {};
+        fileNames.forEach(f2 => {
+          groupEdges[f1][f2] = 0;
+        });
+      });
+
+      // Count edges between groups
+      cy.edges().forEach(edge => {
+        const srcFile = edge.source().data('file') || 'unknown';
+        const tgtFile = edge.target().data('file') || 'unknown';
+        if (srcFile !== tgtFile && groupEdges[srcFile] && groupEdges[srcFile][tgtFile] !== undefined) {
+          groupEdges[srcFile][tgtFile]++;
+          groupEdges[tgtFile][srcFile]++;
+        }
+      });
+
+      // Greedy ordering: start with largest group, add most-connected next
+      const sorted = [];
+      const remaining = new Set(fileNames);
+
+      // Start with group that has most nodes
+      let current = fileNames.reduce((a, b) =>
+        groups[a].length > groups[b].length ? a : b
+      );
+      sorted.push(current);
+      remaining.delete(current);
+
+      while (remaining.size > 0) {
+        let best = null;
+        let bestScore = -1;
+        remaining.forEach(f => {
+          const score = groupEdges[current][f] || 0;
+          if (score > bestScore) {
+            bestScore = score;
+            best = f;
+          }
+        });
+        if (best) {
+          sorted.push(best);
+          remaining.delete(best);
+          current = best;
+        } else {
+          // No connections, just pick first remaining
+          const next = remaining.values().next().value;
+          sorted.push(next);
+          remaining.delete(next);
+          current = next;
+        }
+      }
+
+      return sorted;
+    }
+
+    // Layout nodes in sub-circles grouped by file
+    function layoutSubCircles() {
+      const params = getLayoutParams();
+      if (!params) return;
+
+      const groups = getFileGroups();
+      const sortedFiles = sortGroupsByConnectivity(groups);
+      const numGroups = sortedFiles.length;
+
+      if (numGroups === 0) return;
+
+      // Position each group's centroid around the main circle
+      sortedFiles.forEach((file, index) => {
+        const nodes = groups[file];
+        const angle = (2 * Math.PI * index / numGroups) - Math.PI / 2;  // Start at top
+        const centroidX = params.centerX + params.mainRadius * Math.cos(angle);
+        const centroidY = params.centerY + params.mainRadius * Math.sin(angle);
+
+        // Calculate sub-circle radius based on node count
+        const subRadius = getSubCircleRadius(nodes.length, params);
+
+        // Position each node in sub-circle around centroid
+        nodes.forEach((node, nodeIndex) => {
+          if (nodes.length === 1) {
+            // Single node - place at centroid
+            node.position({ x: centroidX, y: centroidY });
+          } else {
+            const nodeAngle = (2 * Math.PI * nodeIndex / nodes.length);
+            const x = centroidX + subRadius * Math.cos(nodeAngle);
+            const y = centroidY + subRadius * Math.sin(nodeAngle);
+            node.position({ x, y });
+          }
+        });
+      });
+
+      // Layout isolated nodes in outer ring
+      const isolatedNodes = cy.nodes('.code').filter(n => n.degree() === 0);
+      isolatedNodes.addClass('isolated');
+
+      if (isolatedNodes.length > 0) {
+        isolatedNodes.forEach((node, index) => {
+          const angle = (2 * Math.PI * index / isolatedNodes.length) + Math.PI / 6;
+          const x = params.centerX + params.outerRadius * Math.cos(angle);
+          const y = params.centerY + params.outerRadius * Math.sin(angle);
+          node.position({ x, y });
+        });
+      }
+
+      cy.fit(undefined, 50);
+    }
+
+    // Update node styles with dynamic sizes
+    function updateNodeStyles() {
+      if (!cy) return;
+      layoutParams = getLayoutParams();
+      if (!layoutParams) return;
+
+      cy.style()
+        .selector('node.code')
+        .style({
+          'width': layoutParams.nodeSize,
+          'height': layoutParams.nodeSize
+        })
+        .selector('node.isolated')
+        .style({
+          'width': layoutParams.isolatedNodeSize,
+          'height': layoutParams.isolatedNodeSize
+        })
+        .update();
+    }
+
+    function initCytoscape(elements) {
+      if (cy) cy.destroy();
+
+      cy = cytoscape({
+        container: document.getElementById('cy'),
+        elements: elements,
+        style: [
+          // Compound nodes (files)
+          {
+            selector: 'node.file',
+            style: {
+              'label': 'data(label)',
+              'text-valign': 'top',
+              'text-halign': 'center',
+              'background-color': '#e3f2fd',
+              'background-opacity': 0.9,
+              'border-width': 1,
+              'border-color': '#90caf9',
+              'font-size': '11px',
+              'color': '#1565c0',
+              'padding': '20px',
+              'shape': 'round-rectangle',
+              'text-margin-y': -8,
+              'z-index': 1
+            }
+          },
+          // Regular nodes - small circles, no labels by default (sizes set dynamically)
+          {
+            selector: 'node.code',
+            style: {
+              'label': '',  // No label by default - shown on hover
+              'background-color': (ele) => kindColors[ele.data('kind')] || '#888',
+              'width': (ele) => (layoutParams ? layoutParams.nodeSize : 14),
+              'height': (ele) => (layoutParams ? layoutParams.nodeSize : 14),
+              'shape': 'ellipse',
+              'border-width': 1,
+              'border-color': '#666'
+            }
+          },
+          // Isolated nodes - smaller and faded
+          {
+            selector: 'node.isolated',
+            style: {
+              'width': (ele) => (layoutParams ? layoutParams.isolatedNodeSize : 8),
+              'height': (ele) => (layoutParams ? layoutParams.isolatedNodeSize : 8),
+              'opacity': 0.5
+            }
+          },
+          // Show label on selected nodes
+          {
+            selector: 'node.code:selected',
+            style: {
+              'label': 'data(label)',
+              'font-size': (ele) => (layoutParams ? layoutParams.labelFontSize : '12px'),
+              'color': '#24292f',
+              'text-valign': 'top',
+              'text-margin-y': -8,
+              'text-background-color': '#fff',
+              'text-background-opacity': 0.9,
+              'text-background-padding': '3px'
+            }
+          },
+          // Highlighted node
+          {
+            selector: 'node.highlighted',
+            style: {
+              'border-width': 3,
+              'border-color': '#f0883e'
+            }
+          },
+          // Edges
+          {
+            selector: 'edge',
+            style: {
+              'width': 1.5,
+              'line-color': '#6e7781',
+              'target-arrow-color': '#6e7781',
+              'target-arrow-shape': 'triangle',
+              'curve-style': 'bezier',
+              'arrow-scale': 0.8,
+              'z-index': 999,
+              'z-compound-depth': 'top'
+            }
+          },
+          // Contains edges (file -> nodes)
+          {
+            selector: 'edge.contains',
+            style: {
+              'display': 'none'
+            }
+          },
+          // Relationship edges
+          {
+            selector: 'edge.relationship',
+            style: {
+              'line-color': '#58a6ff',
+              'target-arrow-color': '#58a6ff',
+              'width': 2
+            }
+          },
+          // Defines edges (class -> method)
+          {
+            selector: 'edge[kind="defines"]',
+            style: {
+              'line-color': '#3498db',
+              'target-arrow-color': '#3498db',
+              'line-style': 'solid',
+              'width': 2,
+              'target-arrow-shape': 'triangle'
+            }
+          },
+          // Sibling edges (co-location)
+          {
+            selector: 'edge[kind="sibling"]',
+            style: {
+              'line-color': '#9e9e9e',
+              'target-arrow-color': '#9e9e9e',
+              'line-style': 'dashed',
+              'width': 1,
+              'target-arrow-shape': 'none'
+            }
+          },
+          // Implements edges
+          {
+            selector: 'edge[kind="implements"]',
+            style: {
+              'line-color': '#9b59b6',
+              'target-arrow-color': '#9b59b6',
+              'line-style': 'dotted',
+              'width': 2,
+              'target-arrow-shape': 'triangle-backcurve'
+            }
+          },
+          // Uses edges (cross-file references)
+          {
+            selector: 'edge[kind="uses"]',
+            style: {
+              'line-color': '#2ecc71',
+              'target-arrow-color': '#2ecc71',
+              'line-style': 'solid',
+              'width': 1.5,
+              'target-arrow-shape': 'vee'
+            }
+          },
+          // Orphaned node (has parent reference but parent missing)
+          {
+            selector: 'node.orphaned',
+            style: {
+              'border-style': 'dashed',
+              'border-width': 2,
+              'border-color': '#f59e0b'
+            }
+          },
+          // Suspicious isolated node (function/method with no connections)
+          {
+            selector: 'node.suspicious-isolated',
+            style: {
+              'border-width': 2,
+              'border-color': '#fbbf24',
+              'background-opacity': 0.7
+            }
+          },
+          // Expected isolated node (interface/type - faded)
+          {
+            selector: 'node.expected-isolated',
+            style: {
+              'background-opacity': 0.5
+            }
+          },
+          // Lens highlight styles
+          {
+            selector: 'node.lens-highlight',
+            style: {
+              'border-width': 3,
+              'border-color': '#ff6b6b',
+              'z-index': 999
+            }
+          },
+          {
+            selector: 'edge.lens-highlight',
+            style: {
+              'width': 3,
+              'line-color': '#ff6b6b',
+              'target-arrow-color': '#ff6b6b',
+              'z-index': 999
+            }
+          }
+        ],
+        layout: { name: 'cose', animate: false },
+        wheelSensitivity: 0.3,
+        minZoom: 0.1,
+        maxZoom: 3
+      });
+
+      // Node click handler - zoom into node when in circle layout
+      cy.on('tap', 'node.code', (e) => {
+        const node = e.target;
+        showNodeInfo(node.data());
+        cy.nodes().removeClass('highlighted');
+        node.addClass('highlighted');
+
+        // Click-to-zoom: if in circle layout and not already zoomed, zoom into node
+        const layoutType = document.getElementById('layoutType').value;
+        if (layoutType === 'circle' && !isZoomedIn && node.degree() > 0) {
+          zoomIntoNode(node);
+        }
+      });
+
+      // Background click - hide info panel
+      cy.on('tap', (e) => {
+        if (e.target === cy) {
+          document.getElementById('nodeInfo').classList.remove('visible');
+          cy.nodes().removeClass('highlighted');
+        }
+      });
+
+      // Double-click background to return to full view
+      cy.on('dbltap', (e) => {
+        if (e.target === cy && isZoomedIn) {
+          showFullGraph();
+        }
+      });
+
+      // Hover label behavior - show label on mouseover
+      cy.on('mouseover', 'node.code', (e) => {
+        const node = e.target;
+        const fontSize = layoutParams ? layoutParams.labelFontSize : '11px';
+        node.style({
+          'label': node.data('label'),
+          'font-size': fontSize,
+          'color': '#24292f',
+          'text-valign': 'top',
+          'text-margin-y': -8,
+          'text-background-color': '#fff',
+          'text-background-opacity': 0.9,
+          'text-background-padding': '3px'
+        });
+      });
+
+      cy.on('mouseout', 'node.code', (e) => {
+        const node = e.target;
+        if (!node.selected()) {
+          node.style('label', '');
+        }
+      });
+    }
+
+    function showNodeInfo(data) {
+      document.getElementById('infoName').textContent = data.label;
+      document.getElementById('infoKind').textContent = data.kind;
+      document.getElementById('infoFile').textContent = data.file || 'N/A';
+      document.getElementById('infoVisibility').textContent = data.visibility || 'unknown';
+
+      const sigEl = document.getElementById('infoSignature');
+      if (data.signature) {
+        sigEl.textContent = data.signature;
+        sigEl.style.display = 'block';
+      } else {
+        sigEl.style.display = 'none';
+      }
+
+      document.getElementById('nodeInfo').classList.add('visible');
+    }
+
+    async function loadView() {
+      const viewType = document.getElementById('viewType').value;
+      document.getElementById('stats').textContent = 'Loading...';
+
+      try {
+        const res = await fetch(`${API}/view`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ view: viewType })
+        });
+        allData = await res.json();
+
+        // Generate synthetic edges if none exist
+        if (allData.elements.edges.length === 0) {
+          allData.elements.edges = generateSyntheticEdges(allData.elements.nodes);
+        }
+
+        updateLegend();
+        updateFileList();
+        renderGraph();
+
+      } catch (err) {
+        document.getElementById('stats').textContent = 'Error: ' + err.message;
+        console.error(err);
+      }
+    }
+
+    function generateSyntheticEdges(nodes) {
+      const edges = [];
+      const nodeMap = new Map(); // id -> node data
+      const routeMap = new Map(); // route -> node id
+
+      // Build lookup maps
+      nodes.forEach(n => {
+        nodeMap.set(n.data.id, n.data);
+        if (n.data.route) {
+          routeMap.set(n.data.route, n.data.id);
+        }
+      });
+
+      // Group nodes by file for file-level edges
+      const fileNodes = new Map(); // file -> [node ids]
+      nodes.forEach(n => {
+        const file = n.data.file;
+        if (file) {
+          if (!fileNodes.has(file)) fileNodes.set(file, []);
+          fileNodes.get(file).push(n.data);
+        }
+      });
+
+      // For each file, find parent-child relationships based on route hierarchy
+      fileNodes.forEach((fileNodeList, file) => {
+        // Sort by route length (shorter = parent)
+        const sorted = [...fileNodeList].filter(n => n.route).sort((a, b) =>
+          (a.route || '').length - (b.route || '').length
+        );
+
+        // Create edges for class->method, module->function relationships
+        const classes = sorted.filter(n => n.kind === 'class' || n.kind === 'interface');
+        const functions = sorted.filter(n => n.kind === 'function');
+        const methods = sorted.filter(n => n.kind === 'method');
+        const modules = sorted.filter(n => n.kind === 'module');
+
+        // Methods belong to classes (same file, method route contains class name)
+        classes.forEach(cls => {
+          if (!cls.name) return;
+          methods.forEach(method => {
+            // Check if method route contains class name pattern
+            if (method.route && method.route.includes(cls.name)) {
+              edges.push({
+                data: {
+                  id: `synth_${cls.id}_${method.id}`,
+                  source: cls.id,
+                  target: method.id,
+                  kind: 'defines'
+                }
+              });
+            }
+          });
+        });
+
+        // Create co-location edges for classes in the same file
+        if (classes.length > 1) {
+          for (let i = 0; i < classes.length - 1; i++) {
+            if (classes[i].id && classes[i+1].id) {
+              edges.push({
+                data: {
+                  id: `synth_sibling_${classes[i].id}_${classes[i+1].id}`,
+                  source: classes[i].id,
+                  target: classes[i+1].id,
+                  kind: 'sibling'
+                }
+              });
+            }
+          }
+        }
+
+        // Interface implementations - find classes that might implement interfaces
+        const interfaces = sorted.filter(n => n.kind === 'interface');
+        classes.forEach(cls => {
+          if (!cls.name) return;
+          interfaces.forEach(iface => {
+            if (!iface.name) return;
+            // Simple heuristic: class name contains interface name
+            const clsBase = cls.name.replace('Impl', '');
+            if (cls.name.includes(iface.name) || iface.name.includes(clsBase)) {
+              edges.push({
+                data: {
+                  id: `synth_impl_${cls.id}_${iface.id}`,
+                  source: cls.id,
+                  target: iface.id,
+                  kind: 'implements'
+                }
+              });
+            }
+          });
+        });
+      });
+
+      // Cross-file relationships based on name matching (import-like)
+      const allNodes = [...nodeMap.values()];
+      const exportedNames = new Map(); // name -> [nodes]
+
+      allNodes.forEach(n => {
+        if (n.visibility === 'public' || n.kind === 'interface' || n.kind === 'class') {
+          if (!exportedNames.has(n.name)) exportedNames.set(n.name, []);
+          exportedNames.get(n.name).push(n);
+        }
+      });
+
+      // Find cross-file references (functions that use class names, etc.)
+      allNodes.forEach(n => {
+        if (n.signature && typeof n.signature === 'string') {
+          // Check if signature references known types
+          exportedNames.forEach((targets, typeName) => {
+            if (typeName && n.signature.includes(typeName)) {
+              targets.forEach(target => {
+                if (target && target.file !== n.file && target.id !== n.id) {
+                  edges.push({
+                    data: {
+                      id: `synth_uses_${n.id}_${target.id}`,
+                      source: n.id,
+                      target: target.id,
+                      kind: 'uses'
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+
+      console.log(`Generated ${edges.length} synthetic edges`);
+      return edges;
+    }
+
+    function updateLegend() {
+      if (!allData) return;
+
+      // Count nodes by kind
+      const counts = {};
+      allData.elements.nodes.forEach(n => {
+        const kind = n.data.kind;
+        counts[kind] = (counts[kind] || 0) + 1;
+      });
+
+      const legend = document.getElementById('legend');
+      legend.innerHTML = '';
+
+      Object.entries(kindLabels).forEach(([kind, label]) => {
+        if (!counts[kind]) return;
+
+        const item = document.createElement('div');
+        item.className = 'legend-item' + (enabledKinds.has(kind) ? '' : ' disabled');
+        item.innerHTML = `
+          <div class="legend-dot" style="background: ${kindColors[kind]}"></div>
+          <span>${label}</span>
+          <span class="legend-count">${counts[kind]}</span>
+        `;
+        item.onclick = () => toggleKind(kind);
+        legend.appendChild(item);
+      });
+    }
+
+    function toggleKind(kind) {
+      if (enabledKinds.has(kind)) {
+        enabledKinds.delete(kind);
+      } else {
+        enabledKinds.add(kind);
+      }
+      updateLegend();
+      renderGraph();
+    }
+
+    function updateFileList() {
+      if (!allData) return;
+
+      // Get unique files
+      const files = new Set();
+      allData.elements.nodes.forEach(n => {
+        if (n.data.file) files.add(n.data.file);
+      });
+
+      const fileList = document.getElementById('fileList');
+      fileList.innerHTML = '';
+
+      // Add "All files" option
+      const allItem = document.createElement('div');
+      allItem.className = 'file-item' + (!selectedFile ? ' selected' : '');
+      allItem.textContent = `All files (${files.size})`;
+      allItem.onclick = () => selectFile(null);
+      fileList.appendChild(allItem);
+
+      // Add each file
+      [...files].sort().forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'file-item' + (selectedFile === file ? ' selected' : '');
+        item.textContent = file.split('/').pop(); // Just filename
+        item.title = file;
+        item.onclick = () => selectFile(file);
+        fileList.appendChild(item);
+      });
+    }
+
+    function selectFile(file) {
+      selectedFile = file;
+      updateFileList();
+      renderGraph();
+    }
+
+    function renderGraph() {
+      if (!allData) return;
+
+      const layoutType = document.getElementById('layoutType').value;
+      const searchTerm = document.getElementById('search').value.toLowerCase();
+
+      // Filter nodes
+      let filteredNodes = allData.elements.nodes.filter(n => {
+        if (!enabledKinds.has(n.data.kind)) return false;
+        if (selectedFile && n.data.file !== selectedFile) return false;
+        if (searchTerm && !n.data.label.toLowerCase().includes(searchTerm)) return false;
+        return true;
+      });
+
+      // Group by file for hierarchical layout
+      const fileGroups = {};
+      filteredNodes.forEach(n => {
+        const file = n.data.file || 'unknown';
+        if (!fileGroups[file]) fileGroups[file] = [];
+        fileGroups[file].push(n);
+      });
+
+      // Build elements - flat layout for all (compound nodes cause horizontal spread)
+      const elements = { nodes: [], edges: [] };
+
+      // Always use flat layout - remove parent property to prevent compound node behavior
+      filteredNodes.forEach(n => {
+        // Create a copy of data without the 'parent' property to prevent compound nodes
+        const { parent, ...nodeData } = n.data;
+        elements.nodes.push({
+          data: nodeData,
+          classes: 'code'
+        });
+      });
+
+      // Add edges if they reference visible nodes
+      const nodeIds = new Set(elements.nodes.map(n => n.data.id));
+      allData.elements.edges.forEach(e => {
+        if (nodeIds.has(e.data.source) && nodeIds.has(e.data.target)) {
+          elements.edges.push({
+            data: e.data,
+            classes: e.data.kind ? '' : 'relationship'
+          });
+        }
+      });
+
+      initCytoscape(elements);
+
+      // Apply layout - get container dimensions for bounding box
+      const container = document.getElementById('cy');
+      const bb = {
+        x1: 0,
+        y1: 0,
+        w: container.clientWidth,
+        h: container.clientHeight
+      };
+
+      let layoutConfig;
+      switch (layoutType) {
+        case 'community':
+          // Community detection layout with circular arrangement
+          layoutParams = getLayoutParams();
+          clearLensCache();  // Reset caches when graph changes
+
+          const result = communityLayout();
+
+          // Mark nodes and apply coloring
+          markSuspiciousNodes();
+          if (colorByConnectivityEnabled) {
+            colorByConnectivity();
+          }
+
+          // Apply current lens if not default
+          if (currentLens !== 'default') {
+            applyLens(currentLens);
+          }
+
+          // Update stats
+          const connectedCount = cy.nodes('.code').filter(n => n.degree() > 0).length;
+          document.getElementById('stats').textContent =
+            `${connectedCount} connected (${result?.numCommunities || 0} communities) | ${result?.isolated || 0} isolated`;
+          updateEdgeLegend();
+          return;  // Skip normal layout flow
+
+        case 'cola':
+          layoutConfig = {
+            name: 'cola',
+            nodeSpacing: 20,
+            edgeLength: 50,
+            animate: false,
+            boundingBox: bb,
+            fit: true,
+            padding: 30,
+            convergenceThreshold: 0.01,
+            maxSimulationTime: 4000
+          };
+          break;
+        case 'circle':
+          // Update layout params for current viewport
+          layoutParams = getLayoutParams();
+
+          // Sub-circle layout: group connected nodes by file into sub-circles
+          const connectedNodes = cy.nodes('.code').filter(n => n.degree() > 0);
+          const isolatedNodes = cy.nodes('.code').filter(n => n.degree() === 0);
+
+          // Mark isolated nodes with class for styling
+          isolatedNodes.addClass('isolated');
+          connectedNodes.removeClass('isolated');
+
+          // Apply sub-circle layout
+          layoutSubCircles();
+
+          // Mark nodes and apply coloring
+          markSuspiciousNodes();
+          if (colorByConnectivityEnabled) {
+            colorByConnectivity();
+          }
+
+          // Update stats for circle layout
+          const fileCount = Object.keys(getFileGroups()).length;
+          document.getElementById('stats').textContent =
+            `${connectedNodes.length} connected (${fileCount} groups) | ${isolatedNodes.length} isolated`;
+          updateEdgeLegend();
+          return;  // Skip normal layout flow
+        case 'grid':
+          layoutConfig = { name: 'grid', animate: false, boundingBox: bb, rows: Math.ceil(Math.sqrt(elements.nodes.length)), padding: 50 };
+          break;
+        case 'hierarchy':
+        default:
+          // fCoSE layout - better node distribution than COSE
+          layoutConfig = {
+            name: 'fcose',
+            animate: false,
+            boundingBox: bb,
+            fit: true,
+            quality: 'proof',
+            nodeRepulsion: 4500,
+            idealEdgeLength: 100,
+            gravity: 0.25,
+            gravityRange: 3.8,
+            nodeSeparation: 75,
+            tilingPaddingVertical: 20,
+            tilingPaddingHorizontal: 20,
+            padding: 50
+          };
+      }
+
+      // Run layout and fit after completion
+      const layout = cy.layout(layoutConfig);
+      layout.one('layoutstop', () => {
+        if (autoFitEnabled) {
+          cy.fit(undefined, 50);
+        }
+        // Mark suspicious/orphaned nodes for data quality visualization
+        markSuspiciousNodes();
+        // Apply connectivity coloring if enabled
+        if (colorByConnectivityEnabled) {
+          colorByConnectivity();
+        }
+      });
+      layout.run();
+
+      // Update stats
+      const visibleNodes = cy.nodes('.code').length;
+      const visibleEdges = cy.edges().length;
+      document.getElementById('stats').textContent =
+        `${visibleNodes} nodes | ${visibleEdges} edges | ${Object.keys(fileGroups).length} files`;
+
+      // Update edge legend counts
+      updateEdgeLegend();
+    }
+
+    function updateEdgeLegend() {
+      if (!allData) return;
+
+      const edgeCounts = { defines: 0, implements: 0, uses: 0, sibling: 0 };
+      allData.elements.edges.forEach(e => {
+        const kind = e.data.kind;
+        if (kind && edgeCounts[kind] !== undefined) {
+          edgeCounts[kind]++;
+        }
+      });
+
+      document.getElementById('edgeDefines').textContent = edgeCounts.defines;
+      document.getElementById('edgeImplements').textContent = edgeCounts.implements;
+      document.getElementById('edgeUses').textContent = edgeCounts.uses;
+      document.getElementById('edgeSibling').textContent = edgeCounts.sibling;
+    }
+
+    function expandAll() {
+      cy.nodes('.file').forEach(n => n.style('display', 'element'));
+    }
+
+    function collapseAll() {
+      // Not implemented yet - would need compound node collapse
+    }
+
+    // Show full graph - return from zoomed view
+    function showFullGraph() {
+      if (!cy) return;
+      isZoomedIn = false;
+      document.getElementById('backBtn').style.display = 'none';
+      cy.nodes().show();
+      cy.edges().show();
+      renderGraph();
+    }
+
+    // Zoom into a node and its neighbors
+    function zoomIntoNode(node) {
+      isZoomedIn = true;
+      document.getElementById('backBtn').style.display = 'inline-block';
+
+      const neighbors = node.neighborhood().nodes();
+      const relevantNodes = neighbors.union(node);
+      const relevantEdges = node.connectedEdges();
+
+      // Hide non-relevant elements
+      cy.nodes().not(relevantNodes).hide();
+      cy.edges().not(relevantEdges).hide();
+
+      // Arrange relevant nodes in circle
+      relevantNodes.layout({
+        name: 'circle',
+        fit: true,
+        padding: 80,
+        animate: true,
+        animationDuration: 400
+      }).run();
+
+      // Show all labels in zoomed view
+      relevantNodes.style('label', (ele) => ele.data('label'));
+    }
+
+    // Search handler with debounce
+    let searchTimeout;
+    document.getElementById('search').addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(renderGraph, 300);
+    });
+
+    // Layout change handler
+    document.getElementById('layoutType').addEventListener('change', renderGraph);
+
+    // View type change handler
+    document.getElementById('viewType').addEventListener('change', loadView);
+
+    // Auto-fit toggle handler
+    document.getElementById('autoFitToggle').addEventListener('click', function() {
+      autoFitEnabled = !autoFitEnabled;
+      this.classList.toggle('active', autoFitEnabled);
+      this.textContent = autoFitEnabled ? '[ON] Auto-Fit' : '[OFF] Locked';
+      this.title = autoFitEnabled ? 'Auto-Fit: ON - Click to lock view' : 'View Locked - Click to enable auto-fit';
+
+      if (autoFitEnabled && cy) {
+        cy.fit(undefined, 50);
+      }
+    });
+
+    // Fit button handler - also enables auto-fit
+    document.getElementById('fitBtn').addEventListener('click', () => {
+      if (cy) {
+        cy.fit(undefined, 50);
+        // Also enable auto-fit when user explicitly clicks Fit
+        autoFitEnabled = true;
+        const toggle = document.getElementById('autoFitToggle');
+        toggle.classList.add('active');
+        toggle.textContent = '[ON] Auto-Fit';
+        toggle.title = 'Auto-Fit: ON - Click to lock view';
+      }
+    });
+
+    // Connectivity coloring toggle
+    document.getElementById('connectivityToggle').addEventListener('click', function() {
+      colorByConnectivityEnabled = !colorByConnectivityEnabled;
+      this.classList.toggle('active', colorByConnectivityEnabled);
+      this.textContent = colorByConnectivityEnabled ? 'Color by Degree [ON]' : 'Color by Degree';
+
+      if (colorByConnectivityEnabled) {
+        colorByConnectivity();
+      } else {
+        resetNodeColors();
+      }
+    });
+
+    // Lens selector change handler
+    document.getElementById('lensType').addEventListener('change', function() {
+      applyLens(this.value);
+    });
+
+    // Window resize handler - recalculate sizes and re-layout
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (!cy) return;
+        layoutParams = getLayoutParams();
+        updateNodeStyles();
+
+        // Re-layout if in circle mode
+        const layoutType = document.getElementById('layoutType').value;
+        if (layoutType === 'circle' && !isZoomedIn) {
+          layoutSubCircles();
+          markSuspiciousNodes();
+          if (colorByConnectivityEnabled) {
+            colorByConnectivity();
+          }
+        } else if (autoFitEnabled) {
+          cy.fit(undefined, 50);
+        }
+      }, 250);
+    });
+
+    // Load initial view
+    loadView();
+  </script>
+</body>
+</html>

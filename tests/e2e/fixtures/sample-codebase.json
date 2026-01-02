@@ -1,0 +1,230 @@
+{
+  "version": "v1.0",
+  "generated_at": "2026-01-01T00:00:00Z",
+  "repo": {
+    "url": "https://github.com/example/sample-app",
+    "commit": "abc123def456789012345678",
+    "branch": "main"
+  },
+  "nodes": [
+    {
+      "node_id": "mod_app_12345678",
+      "kind": "module",
+      "name": "app",
+      "file": "src/app.ts",
+      "span": [1, 100],
+      "visibility": "public",
+      "language": "typescript"
+    },
+    {
+      "node_id": "cls_subject_23456789",
+      "kind": "class",
+      "name": "EventSubject",
+      "file": "src/events/subject.ts",
+      "route": "app::events::EventSubject",
+      "span": [5, 50],
+      "visibility": "public",
+      "language": "typescript",
+      "parent": "mod_app_12345678"
+    },
+    {
+      "node_id": "ifc_observer_34567890",
+      "kind": "interface",
+      "name": "EventObserver",
+      "file": "src/events/observer.ts",
+      "route": "app::events::EventObserver",
+      "span": [1, 10],
+      "visibility": "public",
+      "language": "typescript",
+      "parent": "mod_app_12345678"
+    },
+    {
+      "node_id": "mtd_notify_45678901",
+      "kind": "method",
+      "name": "notifyAll",
+      "file": "src/events/subject.ts",
+      "route": "app::events::EventSubject::notifyAll",
+      "span": [30, 40],
+      "visibility": "public",
+      "language": "typescript",
+      "parent": "cls_subject_23456789"
+    },
+    {
+      "node_id": "cls_logger_56789012",
+      "kind": "class",
+      "name": "LoggerObserver",
+      "file": "src/observers/logger.ts",
+      "route": "app::observers::LoggerObserver",
+      "span": [1, 20],
+      "visibility": "public",
+      "language": "typescript",
+      "parent": "mod_app_12345678"
+    },
+    {
+      "node_id": "cls_factory_67890123",
+      "kind": "class",
+      "name": "ServiceFactory",
+      "file": "src/factory/service-factory.ts",
+      "route": "app::factory::ServiceFactory",
+      "span": [1, 30],
+      "visibility": "public",
+      "language": "typescript",
+      "parent": "mod_app_12345678"
+    },
+    {
+      "node_id": "mtd_create_78901234",
+      "kind": "method",
+      "name": "createService",
+      "file": "src/factory/service-factory.ts",
+      "route": "app::factory::ServiceFactory::createService",
+      "span": [10, 25],
+      "visibility": "public",
+      "language": "typescript",
+      "parent": "cls_factory_67890123"
+    },
+    {
+      "node_id": "cls_usersvc_89012345",
+      "kind": "class",
+      "name": "UserService",
+      "file": "src/services/user-service.ts",
+      "route": "app::services::UserService",
+      "span": [1, 50],
+      "visibility": "public",
+      "language": "typescript",
+      "parent": "mod_app_12345678"
+    },
+    {
+      "node_id": "cls_authsvc_90123456",
+      "kind": "class",
+      "name": "AuthService",
+      "file": "src/services/auth-service.ts",
+      "route": "app::services::AuthService",
+      "span": [1, 40],
+      "visibility": "public",
+      "language": "typescript",
+      "parent": "mod_app_12345678"
+    },
+    {
+      "node_id": "cls_config_01234567",
+      "kind": "class",
+      "name": "ConfigManager",
+      "file": "src/config/manager.ts",
+      "route": "app::config::ConfigManager",
+      "span": [1, 25],
+      "visibility": "public",
+      "language": "typescript",
+      "parent": "mod_app_12345678"
+    },
+    {
+      "node_id": "mtd_getinst_12340567",
+      "kind": "method",
+      "name": "getInstance",
+      "file": "src/config/manager.ts",
+      "route": "app::config::ConfigManager::getInstance",
+      "span": [5, 10],
+      "visibility": "public",
+      "language": "typescript",
+      "parent": "cls_config_01234567"
+    },
+    {
+      "node_id": "fld_instanc_23451678",
+      "kind": "field",
+      "name": "_instance",
+      "file": "src/config/manager.ts",
+      "route": "app::config::ConfigManager::_instance",
+      "span": [3, 4],
+      "visibility": "private",
+      "language": "typescript",
+      "parent": "cls_config_01234567"
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "edge_uses_subj_obs_1",
+      "kind": "uses",
+      "src": "cls_subject_23456789",
+      "dst": "ifc_observer_34567890",
+      "confidence": 0.95,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge_impl_log_obs_2",
+      "kind": "implements",
+      "src": "cls_logger_56789012",
+      "dst": "ifc_observer_34567890",
+      "confidence": 1.0,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge_call_notf_obs_3",
+      "kind": "calls",
+      "src": "mtd_notify_45678901",
+      "dst": "ifc_observer_34567890",
+      "confidence": 0.9,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge_call_fact_usr_4",
+      "kind": "calls",
+      "src": "mtd_create_78901234",
+      "dst": "cls_usersvc_89012345",
+      "confidence": 0.85,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge_call_fact_aut_5",
+      "kind": "calls",
+      "src": "mtd_create_78901234",
+      "dst": "cls_authsvc_90123456",
+      "confidence": 0.85,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge_uses_auth_usr_6",
+      "kind": "uses",
+      "src": "cls_authsvc_90123456",
+      "dst": "cls_usersvc_89012345",
+      "confidence": 0.9,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge_read_getins_fl_7",
+      "kind": "reads",
+      "src": "mtd_getinst_12340567",
+      "dst": "fld_instanc_23451678",
+      "confidence": 1.0,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge_def_app_subj_8",
+      "kind": "defines",
+      "src": "mod_app_12345678",
+      "dst": "cls_subject_23456789",
+      "confidence": 1.0,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge_def_subj_notf_9",
+      "kind": "defines",
+      "src": "cls_subject_23456789",
+      "dst": "mtd_notify_45678901",
+      "confidence": 1.0,
+      "evidence": ["static_analysis"]
+    }
+  ],
+  "annotations": [
+    {
+      "target_id": "cls_subject_23456789",
+      "tags": ["pattern.observer.subject"]
+    },
+    {
+      "target_id": "ifc_observer_34567890",
+      "tags": ["pattern.observer.observer"]
+    },
+    {
+      "target_id": "cls_config_01234567",
+      "tags": ["pattern.singleton"]
+    }
+  ],
+  "patterns": []
+}

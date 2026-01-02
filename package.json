@@ -5,13 +5,19 @@
   "description": "A semantic graph analysis tool for codebase understanding",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "semantic-lens": "./dist/cli/index.js"
+  },
   "scripts": {
-    "build": "tsc",
-    "test": "vitest",
+    "build": "tsc && cp src/schema/semantic-graph-bundle.schema.json dist/schema/",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint src tests",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "validate": "node dist/cli/validate.js"
+    "validate": "node dist/cli/index.js validate"
   },
   "keywords": [
     "semantic-analysis",
