@@ -89,7 +89,7 @@ class GraphViewImpl implements GraphView {
     this.cy = cytoscape({
       container: resolvedContainer ?? undefined,
       elements,
-      style: stylesheet as cytoscape.Stylesheet[],
+      style: stylesheet as unknown as cytoscape.StylesheetStyle[],
       layout: { name: 'preset' },
       userZoomingEnabled: this.props.interactive !== false,
       userPanningEnabled: this.props.interactive !== false,
