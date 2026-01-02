@@ -1,0 +1,32 @@
+id: strategy
+name: Strategy Pattern
+description: >
+  Context class uses an interface with multiple implementations.
+  The context delegates behavior to a strategy implementation at runtime.
+
+roles:
+  context:
+    kind: class
+  strategy_interface:
+    kind: interface
+  strategy_impl:
+    kind: class
+
+constraints:
+  - type: edge
+    kind: uses
+    from: context
+    to: strategy_interface
+  - type: edge
+    kind: implements
+    from: strategy_impl
+    to: strategy_interface
+  - type: group
+    role: strategy_impl
+    min_size: 2
+
+scoring:
+  base: 0.4
+  weights:
+    uses_interface: 0.3
+    multiple_impls: 0.3

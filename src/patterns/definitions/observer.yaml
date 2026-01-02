@@ -1,0 +1,42 @@
+id: observer
+name: Observer Pattern
+description: >
+  Subject class notifies multiple observer classes when state changes.
+  The notify method calls update methods on all registered observers.
+
+roles:
+  subject:
+    kind: class
+  notify:
+    kind: method
+    owned_by: subject
+    name: /notify|broadcast|emit|fire/i
+  observer:
+    kind: class
+  update:
+    kind: method
+    owned_by: observer
+    name: /update|on[A-Z]|handle[A-Z]/i
+
+constraints:
+  - type: edge
+    kind: calls
+    from: notify
+    to: update
+  - type: group
+    role: observer
+    min_size: 2
+  - type: optional
+    constraint:
+      type: edge
+      kind: implements
+      from: observer
+      to: observer_base
+    bind_as: observer_base
+
+scoring:
+  base: 0.4
+  weights:
+    calls_notify_update: 0.3
+    multiple_observers: 0.2
+    has_observer_base: 0.1

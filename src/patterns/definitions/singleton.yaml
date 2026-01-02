@@ -1,0 +1,35 @@
+id: singleton
+name: Singleton Pattern
+description: >
+  Class that ensures only one instance exists.
+  Provides a global accessor method to get the single instance.
+
+roles:
+  singleton_class:
+    kind: class
+  accessor:
+    kind: method
+    owned_by: singleton_class
+    name: /getInstance|instance|shared|default/i
+  instance_field:
+    kind: field
+    owned_by: singleton_class
+    name: /instance|_instance|singleton/i
+
+constraints:
+  - type: edge
+    kind: reads
+    from: accessor
+    to: instance_field
+  - type: optional
+    constraint:
+      type: edge
+      kind: writes
+      from: accessor
+      to: instance_field
+
+scoring:
+  base: 0.5
+  weights:
+    has_accessor: 0.25
+    has_instance_field: 0.25
