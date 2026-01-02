@@ -6,6 +6,7 @@
 > - **Execute phase**: `/ai-dev-kit:execute-phase plans/P1-foundation.md`
 >
 > For tasks better suited to other agents, use delegation:
+>
 > - **Large context analysis**: `/ai-dev-kit:delegate gemini "Review JSON Schema for edge cases"`
 > - **Quick codegen**: `/ai-dev-kit:delegate cursor "Generate TypeScript type from schema"`
 > - **Sandboxed execution**: `/ai-dev-kit:delegate codex "Run AJV validation tests"`
@@ -23,6 +24,7 @@ Phase 1 establishes the foundational infrastructure for Semantic Lens:
 - **Test Fixtures**: Build valid/invalid bundle fixtures for testing
 
 **Deliverables**:
+
 1. `package.json` with all dependencies
 2. `semantic-graph-bundle.schema.json` (JSON Schema 2020-12)
 3. `src/schema/validator.ts` (AJV validation)
@@ -35,11 +37,13 @@ Phase 1 establishes the foundational infrastructure for Semantic Lens:
 ## Interface Freeze Gates
 
 ### Core Interfaces (IF-0)
+
 - [ ] IF-0-P1-SCHEMA: SemanticGraphBundle JSON Schema frozen
 - [ ] IF-0-P1-TYPES: TypeScript types match JSON Schema exactly
 - [ ] IF-0-P1-VALIDATOR: Validator interface and error format frozen
 
 ### Cross-Lane Dependencies
+
 - [ ] IF-1-P1-SETUP: Project tooling configured and working
 - [ ] IF-1-P1-CONSTANTS: Shared constants defined
 
@@ -65,47 +69,47 @@ Phase 1 establishes the foundational infrastructure for Semantic Lens:
 
 ### Files
 
-| Path | Status | Owner | Purpose |
-|------|--------|-------|---------|
-| `package.json` | Added | SL-SETUP | Project manifest with dependencies |
-| `tsconfig.json` | Added | SL-SETUP | TypeScript configuration |
-| `vitest.config.ts` | Added | SL-SETUP | Test framework configuration |
-| `.eslintrc.cjs` | Added | SL-SETUP | ESLint configuration |
-| `.prettierrc` | Added | SL-SETUP | Prettier configuration |
-| `src/constants.ts` | Added | SL-SETUP | Shared constants (NodeKind, EdgeKind, etc.) |
-| `src/schema/semantic-graph-bundle.schema.json` | Added | SL-SCHEMA | JSON Schema 2020-12 definition |
-| `src/schema/types.ts` | Added | SL-SCHEMA | TypeScript types from schema |
-| `src/schema/validator.ts` | Added | SL-SCHEMA | AJV-based validation |
-| `src/schema/index.ts` | Added | SL-SCHEMA | Module exports |
-| `tests/unit/schema/validator.test.ts` | Added | SL-SCHEMA | Validator unit tests |
-| `fixtures/valid-bundle.json` | Added | SL-SCHEMA | Valid test fixture |
-| `fixtures/invalid-bundle.json` | Added | SL-SCHEMA | Invalid test fixture |
-| `fixtures/minimal-bundle.json` | Added | SL-SCHEMA | Minimal valid bundle |
+| Path                                           | Status | Owner     | Purpose                                     |
+| ---------------------------------------------- | ------ | --------- | ------------------------------------------- |
+| `package.json`                                 | Added  | SL-SETUP  | Project manifest with dependencies          |
+| `tsconfig.json`                                | Added  | SL-SETUP  | TypeScript configuration                    |
+| `vitest.config.ts`                             | Added  | SL-SETUP  | Test framework configuration                |
+| `.eslintrc.cjs`                                | Added  | SL-SETUP  | ESLint configuration                        |
+| `.prettierrc`                                  | Added  | SL-SETUP  | Prettier configuration                      |
+| `src/constants.ts`                             | Added  | SL-SETUP  | Shared constants (NodeKind, EdgeKind, etc.) |
+| `src/schema/semantic-graph-bundle.schema.json` | Added  | SL-SCHEMA | JSON Schema 2020-12 definition              |
+| `src/schema/types.ts`                          | Added  | SL-SCHEMA | TypeScript types from schema                |
+| `src/schema/validator.ts`                      | Added  | SL-SCHEMA | AJV-based validation                        |
+| `src/schema/index.ts`                          | Added  | SL-SCHEMA | Module exports                              |
+| `tests/unit/schema/validator.test.ts`          | Added  | SL-SCHEMA | Validator unit tests                        |
+| `fixtures/valid-bundle.json`                   | Added  | SL-SCHEMA | Valid test fixture                          |
+| `fixtures/invalid-bundle.json`                 | Added  | SL-SCHEMA | Invalid test fixture                        |
+| `fixtures/minimal-bundle.json`                 | Added  | SL-SCHEMA | Minimal valid bundle                        |
 
 ### Types
 
-| Type | Path | Status | Description |
-|------|------|--------|-------------|
-| `NodeKind` | `src/constants.ts` | Added | Union of node kinds |
-| `EdgeKind` | `src/constants.ts` | Added | Union of edge kinds |
-| `Visibility` | `src/constants.ts` | Added | Node visibility levels |
-| `Evidence` | `src/constants.ts` | Added | Evidence source types |
-| `Span` | `src/schema/types.ts` | Added | `[start, end]` tuple |
-| `Node` | `src/schema/types.ts` | Added | Graph node structure |
-| `Edge` | `src/schema/types.ts` | Added | Graph edge structure |
-| `Annotation` | `src/schema/types.ts` | Added | Node annotation structure |
-| `PatternInstance` | `src/schema/types.ts` | Added | Pattern match structure |
-| `SemanticGraphBundle` | `src/schema/types.ts` | Added | Top-level bundle type |
-| `ValidationResult` | `src/schema/validator.ts` | Added | Validation result type |
-| `ValidationError` | `src/schema/validator.ts` | Added | Error detail type |
+| Type                  | Path                      | Status | Description               |
+| --------------------- | ------------------------- | ------ | ------------------------- |
+| `NodeKind`            | `src/constants.ts`        | Added  | Union of node kinds       |
+| `EdgeKind`            | `src/constants.ts`        | Added  | Union of edge kinds       |
+| `Visibility`          | `src/constants.ts`        | Added  | Node visibility levels    |
+| `Evidence`            | `src/constants.ts`        | Added  | Evidence source types     |
+| `Span`                | `src/schema/types.ts`     | Added  | `[start, end]` tuple      |
+| `Node`                | `src/schema/types.ts`     | Added  | Graph node structure      |
+| `Edge`                | `src/schema/types.ts`     | Added  | Graph edge structure      |
+| `Annotation`          | `src/schema/types.ts`     | Added  | Node annotation structure |
+| `PatternInstance`     | `src/schema/types.ts`     | Added  | Pattern match structure   |
+| `SemanticGraphBundle` | `src/schema/types.ts`     | Added  | Top-level bundle type     |
+| `ValidationResult`    | `src/schema/validator.ts` | Added  | Validation result type    |
+| `ValidationError`     | `src/schema/validator.ts` | Added  | Error detail type         |
 
 ### Functions
 
-| Function | Path | Signature | Description |
-|----------|------|-----------|-------------|
-| `validateBundle` | `src/schema/validator.ts` | `(data: unknown) => ValidationResult` | Validates bundle against schema |
-| `getValidator` | `src/schema/validator.ts` | `() => ValidateFunction` | Returns compiled AJV validator |
-| `formatErrors` | `src/schema/validator.ts` | `(errors: ErrorObject[]) => ValidationError[]` | Formats AJV errors |
+| Function         | Path                      | Signature                                      | Description                     |
+| ---------------- | ------------------------- | ---------------------------------------------- | ------------------------------- |
+| `validateBundle` | `src/schema/validator.ts` | `(data: unknown) => ValidationResult`          | Validates bundle against schema |
+| `getValidator`   | `src/schema/validator.ts` | `() => ValidateFunction`                       | Returns compiled AJV validator  |
+| `formatErrors`   | `src/schema/validator.ts` | `(errors: ErrorObject[]) => ValidationError[]` | Formats AJV errors              |
 
 ---
 
@@ -147,8 +151,8 @@ Phase 1 establishes the foundational infrastructure for Semantic Lens:
 ```typescript
 // Core types matching JSON Schema exactly
 export interface SemanticGraphBundle {
-  version: string;  // Pattern: ^v\d+\.\d+$
-  generated_at: string;  // ISO 8601 date-time
+  version: string; // Pattern: ^v\d+\.\d+$
+  generated_at: string; // ISO 8601 date-time
   repo?: Repo;
   nodes: Node[];
   edges: Edge[];
@@ -157,12 +161,12 @@ export interface SemanticGraphBundle {
 }
 
 export interface Node {
-  node_id: string;  // minLength: 8
+  node_id: string; // minLength: 8
   kind: NodeKind;
   name: string;
   language: string;
   file: string;
-  span: Span;  // [start, end]
+  span: Span; // [start, end]
   parent?: string;
   route?: string;
   visibility?: Visibility;
@@ -171,12 +175,12 @@ export interface Node {
 }
 
 export interface Edge {
-  edge_id: string;  // minLength: 8
+  edge_id: string; // minLength: 8
   kind: EdgeKind;
   src: string;
   dst: string;
-  confidence: number;  // 0.0-1.0
-  evidence: Evidence[];  // minItems: 1
+  confidence: number; // 0.0-1.0
+  evidence: Evidence[]; // minItems: 1
   meta?: Record<string, unknown>;
 }
 
@@ -189,8 +193,8 @@ export interface Annotation {
 export interface PatternInstance {
   instance_id: string;
   pattern_id: string;
-  roles: Record<string, string>;  // role_name -> node_id
-  confidence: number;  // 0.0-1.0
+  roles: Record<string, string>; // role_name -> node_id
+  confidence: number; // 0.0-1.0
   evidence: string[];
   explain?: string;
 }
@@ -212,9 +216,9 @@ export interface ValidationResult {
 }
 
 export interface ValidationError {
-  path: string;       // JSON pointer path (e.g., "/nodes/0/kind")
-  message: string;    // Human-readable error message
-  keyword: string;    // JSON Schema keyword that failed
+  path: string; // JSON pointer path (e.g., "/nodes/0/kind")
+  message: string; // Human-readable error message
+  keyword: string; // JSON Schema keyword that failed
   params?: Record<string, unknown>;
 }
 
@@ -232,25 +236,25 @@ export function isValidBundle(data: unknown): data is SemanticGraphBundle;
 
 ## C. Exhaustive Change List
 
-| File | Status | Owner | Rationale |
-|------|--------|-------|-----------|
-| `package.json` | Added | SL-SETUP | Dependencies: typescript, vitest, ajv, eslint, prettier |
-| `tsconfig.json` | Added | SL-SETUP | ES2022 target, strict mode, path aliases |
-| `vitest.config.ts` | Added | SL-SETUP | Test configuration with coverage |
-| `.eslintrc.cjs` | Added | SL-SETUP | TypeScript ESLint rules |
-| `.prettierrc` | Added | SL-SETUP | Consistent formatting |
-| `.gitignore` | Added | SL-SETUP | Ignore node_modules, dist, coverage |
-| `src/constants.ts` | Added | SL-SETUP | Shared type constants from spec |
-| `src/schema/semantic-graph-bundle.schema.json` | Added | SL-SCHEMA | IR v1 schema from spec |
-| `src/schema/types.ts` | Added | SL-SCHEMA | TypeScript types from schema |
-| `src/schema/validator.ts` | Added | SL-SCHEMA | AJV validation with error formatting |
-| `src/schema/index.ts` | Added | SL-SCHEMA | Public exports |
-| `tests/unit/schema/validator.test.ts` | Added | SL-SCHEMA | Validation tests |
-| `tests/unit/schema/types.test.ts` | Added | SL-SCHEMA | Type compatibility tests |
-| `fixtures/valid-bundle.json` | Added | SL-SCHEMA | Complete valid bundle |
-| `fixtures/invalid-bundle.json` | Added | SL-SCHEMA | Multiple validation errors |
-| `fixtures/minimal-bundle.json` | Added | SL-SCHEMA | Minimal valid bundle |
-| `fixtures/edge-cases/` | Added | SL-SCHEMA | Edge case fixtures |
+| File                                           | Status | Owner     | Rationale                                               |
+| ---------------------------------------------- | ------ | --------- | ------------------------------------------------------- |
+| `package.json`                                 | Added  | SL-SETUP  | Dependencies: typescript, vitest, ajv, eslint, prettier |
+| `tsconfig.json`                                | Added  | SL-SETUP  | ES2022 target, strict mode, path aliases                |
+| `vitest.config.ts`                             | Added  | SL-SETUP  | Test configuration with coverage                        |
+| `.eslintrc.cjs`                                | Added  | SL-SETUP  | TypeScript ESLint rules                                 |
+| `.prettierrc`                                  | Added  | SL-SETUP  | Consistent formatting                                   |
+| `.gitignore`                                   | Added  | SL-SETUP  | Ignore node_modules, dist, coverage                     |
+| `src/constants.ts`                             | Added  | SL-SETUP  | Shared type constants from spec                         |
+| `src/schema/semantic-graph-bundle.schema.json` | Added  | SL-SCHEMA | IR v1 schema from spec                                  |
+| `src/schema/types.ts`                          | Added  | SL-SCHEMA | TypeScript types from schema                            |
+| `src/schema/validator.ts`                      | Added  | SL-SCHEMA | AJV validation with error formatting                    |
+| `src/schema/index.ts`                          | Added  | SL-SCHEMA | Public exports                                          |
+| `tests/unit/schema/validator.test.ts`          | Added  | SL-SCHEMA | Validation tests                                        |
+| `tests/unit/schema/types.test.ts`              | Added  | SL-SCHEMA | Type compatibility tests                                |
+| `fixtures/valid-bundle.json`                   | Added  | SL-SCHEMA | Complete valid bundle                                   |
+| `fixtures/invalid-bundle.json`                 | Added  | SL-SCHEMA | Multiple validation errors                              |
+| `fixtures/minimal-bundle.json`                 | Added  | SL-SCHEMA | Minimal valid bundle                                    |
+| `fixtures/edge-cases/`                         | Added  | SL-SCHEMA | Edge case fixtures                                      |
 
 ---
 
@@ -259,12 +263,14 @@ export function isValidBundle(data: unknown): data is SemanticGraphBundle;
 ### SL-SETUP -- Project Setup and Tooling
 
 **Scope**:
+
 - Initialize TypeScript project with package.json
 - Configure ESLint, Prettier, Vitest
 - Create directory structure
 - Define shared constants
 
 **Owned Files**:
+
 - `package.json`
 - `tsconfig.json`
 - `vitest.config.ts`
@@ -274,37 +280,41 @@ export function isValidBundle(data: unknown): data is SemanticGraphBundle;
 - `src/constants.ts`
 
 **Interfaces Provided**:
+
 - `IF-1-P1-SETUP`: Project tooling ready
 - `IF-1-P1-CONSTANTS`: `NODE_KINDS`, `EDGE_KINDS`, `EVIDENCE_TYPES`, `VISIBILITY` constants
 
 **Interfaces Consumed**:
+
 - None (foundation lane)
 
 **Tasks**:
 
-| Task ID | Task Type | Depends On | Files in Scope | Tests Owned Files | Test Command(s) | Acceptance Criteria |
-|---------|-----------|------------|----------------|-------------------|-----------------|---------------------|
-| P1-SL-SETUP-01 | test | - | - | `tests/unit/constants.test.ts` | `npm run test -- tests/unit/constants.test.ts` | Test file exists with constant validation |
-| P1-SL-SETUP-02 | impl | P1-SL-SETUP-01 | `package.json` | - | `npm install` | Dependencies install without errors |
-| P1-SL-SETUP-03 | impl | P1-SL-SETUP-02 | `tsconfig.json` | - | `npx tsc --noEmit` | TypeScript compiles |
-| P1-SL-SETUP-04 | impl | P1-SL-SETUP-02 | `vitest.config.ts` | - | `npm run test -- --run` | Vitest runs |
-| P1-SL-SETUP-05 | impl | P1-SL-SETUP-02 | `.eslintrc.cjs` | - | `npm run lint` | ESLint passes |
-| P1-SL-SETUP-06 | impl | P1-SL-SETUP-02 | `.prettierrc` | - | `npm run format:check` | Prettier passes |
-| P1-SL-SETUP-07 | impl | P1-SL-SETUP-02 | `.gitignore` | - | - | Ignores node_modules, dist |
-| P1-SL-SETUP-08 | impl | P1-SL-SETUP-01 | `src/constants.ts` | `tests/unit/constants.test.ts` | `npm run test -- tests/unit/constants.test.ts` | Constants match spec |
-| P1-SL-SETUP-09 | verify | P1-SL-SETUP-08 | - | - | `npm run build && npm run lint && npm run test` | All checks pass |
+| Task ID        | Task Type | Depends On     | Files in Scope     | Tests Owned Files              | Test Command(s)                                 | Acceptance Criteria                       |
+| -------------- | --------- | -------------- | ------------------ | ------------------------------ | ----------------------------------------------- | ----------------------------------------- |
+| P1-SL-SETUP-01 | test      | -              | -                  | `tests/unit/constants.test.ts` | `npm run test -- tests/unit/constants.test.ts`  | Test file exists with constant validation |
+| P1-SL-SETUP-02 | impl      | P1-SL-SETUP-01 | `package.json`     | -                              | `npm install`                                   | Dependencies install without errors       |
+| P1-SL-SETUP-03 | impl      | P1-SL-SETUP-02 | `tsconfig.json`    | -                              | `npx tsc --noEmit`                              | TypeScript compiles                       |
+| P1-SL-SETUP-04 | impl      | P1-SL-SETUP-02 | `vitest.config.ts` | -                              | `npm run test -- --run`                         | Vitest runs                               |
+| P1-SL-SETUP-05 | impl      | P1-SL-SETUP-02 | `.eslintrc.cjs`    | -                              | `npm run lint`                                  | ESLint passes                             |
+| P1-SL-SETUP-06 | impl      | P1-SL-SETUP-02 | `.prettierrc`      | -                              | `npm run format:check`                          | Prettier passes                           |
+| P1-SL-SETUP-07 | impl      | P1-SL-SETUP-02 | `.gitignore`       | -                              | -                                               | Ignores node_modules, dist                |
+| P1-SL-SETUP-08 | impl      | P1-SL-SETUP-01 | `src/constants.ts` | `tests/unit/constants.test.ts` | `npm run test -- tests/unit/constants.test.ts`  | Constants match spec                      |
+| P1-SL-SETUP-09 | verify    | P1-SL-SETUP-08 | -                  | -                              | `npm run build && npm run lint && npm run test` | All checks pass                           |
 
 ---
 
 ### SL-SCHEMA -- Schema, Validation, and Types
 
 **Scope**:
+
 - Implement JSON Schema for SemanticGraphBundle
 - Create AJV-based validator with error formatting
 - Generate TypeScript types matching schema
 - Build test fixtures
 
 **Owned Files**:
+
 - `src/schema/semantic-graph-bundle.schema.json`
 - `src/schema/types.ts`
 - `src/schema/validator.ts`
@@ -314,28 +324,30 @@ export function isValidBundle(data: unknown): data is SemanticGraphBundle;
 - `fixtures/edge-cases/*.json`
 
 **Interfaces Provided**:
+
 - `IF-0-P1-SCHEMA`: JSON Schema definition
 - `IF-0-P1-TYPES`: TypeScript types
 - `IF-0-P1-VALIDATOR`: Validation function and result types
 
 **Interfaces Consumed**:
+
 - `IF-1-P1-SETUP`: Project tooling
 - `IF-1-P1-CONSTANTS`: NodeKind, EdgeKind, etc.
 
 **Tasks**:
 
-| Task ID | Task Type | Depends On | Files in Scope | Tests Owned Files | Test Command(s) | Acceptance Criteria |
-|---------|-----------|------------|----------------|-------------------|-----------------|---------------------|
-| P1-SL-SCHEMA-01 | test | IF-1-P1-SETUP | - | `tests/unit/schema/validator.test.ts` | `npm run test -- tests/unit/schema/validator.test.ts` | Test file with validation cases |
-| P1-SL-SCHEMA-02 | impl | P1-SL-SCHEMA-01 | `src/schema/semantic-graph-bundle.schema.json` | - | - | Schema matches spec exactly |
-| P1-SL-SCHEMA-03 | impl | P1-SL-SCHEMA-02 | `src/schema/types.ts` | `tests/unit/schema/types.test.ts` | `npm run test -- tests/unit/schema/types.test.ts` | Types match schema |
-| P1-SL-SCHEMA-04 | impl | P1-SL-SCHEMA-02, IF-1-P1-CONSTANTS | `src/schema/validator.ts` | `tests/unit/schema/validator.test.ts` | `npm run test -- tests/unit/schema/validator.test.ts` | Validator compiles schema, formats errors |
-| P1-SL-SCHEMA-05 | impl | P1-SL-SCHEMA-04 | `src/schema/index.ts` | - | - | Exports all public API |
-| P1-SL-SCHEMA-06 | impl | P1-SL-SCHEMA-02 | `fixtures/valid-bundle.json` | - | - | Valid bundle fixture |
-| P1-SL-SCHEMA-07 | impl | P1-SL-SCHEMA-02 | `fixtures/invalid-bundle.json` | - | - | Invalid bundle with known errors |
-| P1-SL-SCHEMA-08 | impl | P1-SL-SCHEMA-02 | `fixtures/minimal-bundle.json` | - | - | Minimal valid bundle |
-| P1-SL-SCHEMA-09 | impl | P1-SL-SCHEMA-06 | `fixtures/edge-cases/*.json` | `tests/unit/schema/edge-cases.test.ts` | `npm run test -- tests/unit/schema/edge-cases.test.ts` | Edge case coverage |
-| P1-SL-SCHEMA-10 | verify | P1-SL-SCHEMA-09 | - | - | `npm run test -- --coverage` | >80% coverage on schema module |
+| Task ID         | Task Type | Depends On                         | Files in Scope                                 | Tests Owned Files                      | Test Command(s)                                        | Acceptance Criteria                       |
+| --------------- | --------- | ---------------------------------- | ---------------------------------------------- | -------------------------------------- | ------------------------------------------------------ | ----------------------------------------- |
+| P1-SL-SCHEMA-01 | test      | IF-1-P1-SETUP                      | -                                              | `tests/unit/schema/validator.test.ts`  | `npm run test -- tests/unit/schema/validator.test.ts`  | Test file with validation cases           |
+| P1-SL-SCHEMA-02 | impl      | P1-SL-SCHEMA-01                    | `src/schema/semantic-graph-bundle.schema.json` | -                                      | -                                                      | Schema matches spec exactly               |
+| P1-SL-SCHEMA-03 | impl      | P1-SL-SCHEMA-02                    | `src/schema/types.ts`                          | `tests/unit/schema/types.test.ts`      | `npm run test -- tests/unit/schema/types.test.ts`      | Types match schema                        |
+| P1-SL-SCHEMA-04 | impl      | P1-SL-SCHEMA-02, IF-1-P1-CONSTANTS | `src/schema/validator.ts`                      | `tests/unit/schema/validator.test.ts`  | `npm run test -- tests/unit/schema/validator.test.ts`  | Validator compiles schema, formats errors |
+| P1-SL-SCHEMA-05 | impl      | P1-SL-SCHEMA-04                    | `src/schema/index.ts`                          | -                                      | -                                                      | Exports all public API                    |
+| P1-SL-SCHEMA-06 | impl      | P1-SL-SCHEMA-02                    | `fixtures/valid-bundle.json`                   | -                                      | -                                                      | Valid bundle fixture                      |
+| P1-SL-SCHEMA-07 | impl      | P1-SL-SCHEMA-02                    | `fixtures/invalid-bundle.json`                 | -                                      | -                                                      | Invalid bundle with known errors          |
+| P1-SL-SCHEMA-08 | impl      | P1-SL-SCHEMA-02                    | `fixtures/minimal-bundle.json`                 | -                                      | -                                                      | Minimal valid bundle                      |
+| P1-SL-SCHEMA-09 | impl      | P1-SL-SCHEMA-06                    | `fixtures/edge-cases/*.json`                   | `tests/unit/schema/edge-cases.test.ts` | `npm run test -- tests/unit/schema/edge-cases.test.ts` | Edge case coverage                        |
+| P1-SL-SCHEMA-10 | verify    | P1-SL-SCHEMA-09                    | -                                              | -                                      | `npm run test -- --coverage`                           | >80% coverage on schema module            |
 
 ---
 
@@ -391,6 +403,7 @@ flowchart TD
 **Purpose**: Project manifest with dependencies and scripts
 
 **Key Responsibilities**:
+
 - Define dependencies: typescript, vitest, ajv, eslint, prettier
 - Define scripts: build, test, lint, format
 
@@ -435,6 +448,7 @@ flowchart TD
 **Purpose**: TypeScript compiler configuration
 
 **Key Responsibilities**:
+
 - ES2022 target with strict mode
 - Path aliases for clean imports
 - Output to dist/
@@ -450,6 +464,7 @@ flowchart TD
 **Purpose**: Test framework configuration
 
 **Key Responsibilities**:
+
 - Configure test patterns
 - Set coverage thresholds (80% for schema module)
 - Configure path aliases
@@ -465,27 +480,54 @@ flowchart TD
 **Purpose**: Shared constants matching JSON Schema enums
 
 **Key Responsibilities**:
+
 - Export `NODE_KINDS`, `EDGE_KINDS`, `VISIBILITY`, `EVIDENCE_TYPES`
 - Provide type unions from const arrays
 
 **Interfaces Exposed**:
+
 - `NodeKind`, `EdgeKind`, `Visibility`, `Evidence` types
 - Constant arrays for runtime validation
 
 **Tests Required**: `tests/unit/constants.test.ts`
 
 ```typescript
-export const NODE_KINDS = ['module', 'class', 'interface', 'trait', 'function', 'method', 'field', 'property'] as const;
-export type NodeKind = typeof NODE_KINDS[number];
+export const NODE_KINDS = [
+  'module',
+  'class',
+  'interface',
+  'trait',
+  'function',
+  'method',
+  'field',
+  'property',
+] as const;
+export type NodeKind = (typeof NODE_KINDS)[number];
 
-export const EDGE_KINDS = ['defines', 'imports', 'calls', 'inherits', 'implements', 'uses', 'reads', 'writes', 'throws'] as const;
-export type EdgeKind = typeof EDGE_KINDS[number];
+export const EDGE_KINDS = [
+  'defines',
+  'imports',
+  'calls',
+  'inherits',
+  'implements',
+  'uses',
+  'reads',
+  'writes',
+  'throws',
+] as const;
+export type EdgeKind = (typeof EDGE_KINDS)[number];
 
 export const VISIBILITY = ['public', 'protected', 'private', 'unknown'] as const;
-export type Visibility = typeof VISIBILITY[number];
+export type Visibility = (typeof VISIBILITY)[number];
 
-export const EVIDENCE_TYPES = ['chunker', 'lsp', 'static_analysis', 'heuristic', 'llm_score'] as const;
-export type Evidence = typeof EVIDENCE_TYPES[number];
+export const EVIDENCE_TYPES = [
+  'chunker',
+  'lsp',
+  'static_analysis',
+  'heuristic',
+  'llm_score',
+] as const;
+export type Evidence = (typeof EVIDENCE_TYPES)[number];
 ```
 
 ---
@@ -495,6 +537,7 @@ export type Evidence = typeof EVIDENCE_TYPES[number];
 **Purpose**: JSON Schema 2020-12 definition for SemanticGraphBundle
 
 **Key Responsibilities**:
+
 - Define complete bundle structure
 - Include all node/edge/annotation/pattern definitions
 - Enforce constraints (minLength, pattern, format)
@@ -510,6 +553,7 @@ export type Evidence = typeof EVIDENCE_TYPES[number];
 **Purpose**: TypeScript types matching JSON Schema exactly
 
 **Key Responsibilities**:
+
 - Define `SemanticGraphBundle`, `Node`, `Edge`, `Annotation`, `PatternInstance`
 - Import and use types from `constants.ts`
 - Provide type guards where useful
@@ -525,6 +569,7 @@ export type Evidence = typeof EVIDENCE_TYPES[number];
 **Purpose**: AJV-based validation with error formatting
 
 **Key Responsibilities**:
+
 - Compile JSON Schema with AJV
 - Validate unknown data and return typed result
 - Format errors with human-readable messages
@@ -562,7 +607,7 @@ export function validateBundle(data: unknown): ValidationResult {
   }
   return {
     valid: false,
-    errors: formatErrors(validate.errors ?? [])
+    errors: formatErrors(validate.errors ?? []),
   };
 }
 
@@ -571,11 +616,11 @@ export function isValidBundle(data: unknown): data is SemanticGraphBundle {
 }
 
 function formatErrors(errors: ErrorObject[]): ValidationError[] {
-  return errors.map(err => ({
+  return errors.map((err) => ({
     path: err.instancePath || '/',
     message: err.message ?? 'Unknown error',
     keyword: err.keyword,
-    params: err.params
+    params: err.params,
   }));
 }
 ```
@@ -587,6 +632,7 @@ function formatErrors(errors: ErrorObject[]): ValidationError[] {
 **Purpose**: Public exports for schema module
 
 **Key Responsibilities**:
+
 - Re-export types from `types.ts`
 - Re-export validation functions from `validator.ts`
 
@@ -601,6 +647,7 @@ function formatErrors(errors: ErrorObject[]): ValidationError[] {
 **Purpose**: Complete valid bundle for testing
 
 **Key Responsibilities**:
+
 - Include all required fields
 - Have at least 2 nodes, 1 edge, 1 annotation, 1 pattern
 - Demonstrate realistic graph structure
@@ -616,6 +663,7 @@ function formatErrors(errors: ErrorObject[]): ValidationError[] {
 **Purpose**: Invalid bundle with known errors
 
 **Key Responsibilities**:
+
 - Include multiple validation errors
 - Cover different error types (missing field, wrong type, constraint violation)
 
@@ -630,6 +678,7 @@ function formatErrors(errors: ErrorObject[]): ValidationError[] {
 **Purpose**: Minimal valid bundle
 
 **Key Responsibilities**:
+
 - Only required fields
 - Empty arrays where allowed
 
@@ -644,6 +693,7 @@ function formatErrors(errors: ErrorObject[]): ValidationError[] {
 ### Test Commands by Lane
 
 **SL-SETUP**:
+
 ```bash
 npm run test -- tests/unit/constants.test.ts
 npm run lint
@@ -652,6 +702,7 @@ npm run build
 ```
 
 **SL-SCHEMA**:
+
 ```bash
 npm run test -- tests/unit/schema/
 npm run test -- tests/unit/schema/ --coverage
@@ -666,11 +717,13 @@ npm run test -- tests/unit/schema/ --coverage
 ### Smoke Tests vs Full Suites
 
 **Smoke Tests** (quick validation):
+
 ```bash
 npm run build && npm run test -- --run tests/unit/schema/validator.test.ts
 ```
 
 **Full Suite**:
+
 ```bash
 npm run test -- --coverage
 ```
@@ -679,44 +732,49 @@ npm run test -- --coverage
 
 ## J. Acceptance Criteria
 
-| Criterion | Test Method | Pass Condition |
-|-----------|-------------|----------------|
-| `npm run build` compiles | `npm run build` | Exit code 0, no errors |
-| TypeScript types match schema | `tests/unit/schema/types.test.ts` | All tests pass |
-| Valid bundles validate | `tests/unit/schema/validator.test.ts` | `valid-bundle.json` passes |
-| Invalid bundles fail | `tests/unit/schema/validator.test.ts` | `invalid-bundle.json` fails with correct errors |
-| Error messages are clear | Manual review + test | Errors include path and human message |
-| Coverage > 80% on schema | `npm run test -- --coverage` | schema/ module >= 80% |
-| ESLint passes | `npm run lint` | Exit code 0 |
-| Prettier passes | `npm run format:check` | Exit code 0 |
-| Constants match spec | `tests/unit/constants.test.ts` | All enum values present |
+| Criterion                     | Test Method                           | Pass Condition                                  |
+| ----------------------------- | ------------------------------------- | ----------------------------------------------- |
+| `npm run build` compiles      | `npm run build`                       | Exit code 0, no errors                          |
+| TypeScript types match schema | `tests/unit/schema/types.test.ts`     | All tests pass                                  |
+| Valid bundles validate        | `tests/unit/schema/validator.test.ts` | `valid-bundle.json` passes                      |
+| Invalid bundles fail          | `tests/unit/schema/validator.test.ts` | `invalid-bundle.json` fails with correct errors |
+| Error messages are clear      | Manual review + test                  | Errors include path and human message           |
+| Coverage > 80% on schema      | `npm run test -- --coverage`          | schema/ module >= 80%                           |
+| ESLint passes                 | `npm run lint`                        | Exit code 0                                     |
+| Prettier passes               | `npm run format:check`                | Exit code 0                                     |
+| Constants match spec          | `tests/unit/constants.test.ts`        | All enum values present                         |
 
 ---
 
 ## M. Output Validation Checklist
 
 ### Structure
+
 - [x] Document has correct `# P1: Foundation` heading
 - [x] All required sections (A through J) are present
 - [x] Lane Index & Dependencies section is machine-parseable
 
 ### Gates
+
 - [x] All interface contracts have `IF-*` gates
-- [x] Gate IDs follow naming convention (IF-0-P1-*, IF-1-P1-*)
+- [x] Gate IDs follow naming convention (IF-0-P1-_, IF-1-P1-_)
 
 ### Lanes
+
 - [x] Each lane has unique ID (SL-SETUP, SL-SCHEMA)
 - [x] Each lane has explicit file ownership
 - [x] No unresolved file overlaps
 - [x] Dependencies form a DAG (no cycles)
 
 ### Tasks
+
 - [x] Each task has Task ID, Task Type, Depends On
 - [x] Each task has Tests owned files and Test command(s)
 - [x] Task ordering: test -> impl -> verify
 - [x] No task modifies files outside its lane
 
 ### Acceptance Criteria
+
 - [x] All criteria are testable (not subjective)
 - [x] Each criterion maps to specific tests
 - [x] No unverifiable criteria

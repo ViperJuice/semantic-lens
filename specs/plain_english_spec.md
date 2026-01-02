@@ -50,7 +50,17 @@
     },
     "EdgeKind": {
       "type": "string",
-      "enum": ["defines", "imports", "calls", "inherits", "implements", "uses", "reads", "writes", "throws"]
+      "enum": [
+        "defines",
+        "imports",
+        "calls",
+        "inherits",
+        "implements",
+        "uses",
+        "reads",
+        "writes",
+        "throws"
+      ]
     },
     "Evidence": {
       "type": "string",
@@ -74,7 +84,10 @@
         "file": { "type": "string" },
         "span": { "$ref": "#/$defs/Span" },
         "parent": { "type": "string" },
-        "route": { "type": "string", "description": "Stable hierarchical path, e.g., pkg.mod::Class::method" },
+        "route": {
+          "type": "string",
+          "description": "Stable hierarchical path, e.g., pkg.mod::Class::method"
+        },
         "visibility": { "$ref": "#/$defs/Visibility" },
         "signature": { "type": "string" },
         "doc_hash": { "type": "string" }
@@ -138,9 +151,9 @@
 
 ### 1.2 Conventions you should enforce (determinism)
 
-* `node_id` = chunker ID (no new IDs for base nodes).
-* `edge_id` = stable hash of `(kind, src, dst, normalized-meta)` with a fixed ordering.
-* `route` is optional but recommended for human display and cross-tool lookup.
+- `node_id` = chunker ID (no new IDs for base nodes).
+- `edge_id` = stable hash of `(kind, src, dst, normalized-meta)` with a fixed ordering.
+- `route` is optional but recommended for human display and cross-tool lookup.
 
 ---
 
@@ -148,20 +161,20 @@
 
 ### 2.1 Graph storage model (recommended)
 
-* Store nodes as `(:Sym {node_id, kind, name, file, language, route, visibility})`
-* Store edges as relationships with `kind` baked into relationship type (fast) or a `kind` property (flexible).
+- Store nodes as `(:Sym {node_id, kind, name, file, language, route, visibility})`
+- Store edges as relationships with `kind` baked into relationship type (fast) or a `kind` property (flexible).
 
 I recommend **relationship types** (fast + expressive):
 
-* `(:Sym)-[:CALLS]->(:Sym)`
-* `(:Sym)-[:DEFINES]->(:Sym)`
-* `(:Sym)-[:IMPLEMENTS]->(:Sym)`
-* `(:Sym)-[:INHERITS]->(:Sym)`
-* `(:Sym)-[:USES]->(:Sym)`
+- `(:Sym)-[:CALLS]->(:Sym)`
+- `(:Sym)-[:DEFINES]->(:Sym)`
+- `(:Sym)-[:IMPLEMENTS]->(:Sym)`
+- `(:Sym)-[:INHERITS]->(:Sym)`
+- `(:Sym)-[:USES]->(:Sym)`
 
 Also store `confidence` on relationships:
 
-* `r.confidence`, `r.evidence`
+- `r.confidence`, `r.evidence`
 
 ---
 
@@ -223,8 +236,8 @@ RETURN iface.node_id AS strategy_iface,
 
 You can approximate without full type inference:
 
-* a `create*`/`new*` method on Creator
-* it calls constructors of multiple classes that implement a Product interface
+- a `create*`/`new*` method on Creator
+- it calls constructors of multiple classes that implement a Product interface
 
 ```cypher
 MATCH (creator:Sym {kind:'class'})-[:DEFINES]->(factory:Sym {kind:'method'})
@@ -247,10 +260,10 @@ RETURN creator.node_id AS creator_id,
 
 Signals:
 
-* class has a static/global “instance”
-* constructor is private/protected (language-dependent)
-* has `getInstance`-like method returning instance
-* instantiation occurs once (hard without runtime)
+- class has a static/global “instance”
+- constructor is private/protected (language-dependent)
+- has `getInstance`-like method returning instance
+- instantiation occurs once (hard without runtime)
 
 A workable heuristic:
 
@@ -269,9 +282,9 @@ RETURN cls.node_id AS singleton_class, m.node_id AS accessor_method, field.node_
 
 For each match, emit:
 
-* `pattern_id`
-* `roles` mapping role names to `node_id`
-* `confidence` based on how many constraints satisfied
+- `pattern_id`
+- `roles` mapping role names to `node_id`
+- `confidence` based on how many constraints satisfied
 
 ---
 
@@ -279,12 +292,11 @@ For each match, emit:
 
 ### 3.1 DSL goals
 
-* Language-agnostic
-* Expressible as **subgraph constraints**
-* Produces either:
-
-  * Cypher queries, or
-  * an in-memory matcher over your IR graph
+- Language-agnostic
+- Expressible as **subgraph constraints**
+- Produces either:
+  - Cypher queries, or
+  - an in-memory matcher over your IR graph
 
 ### 3.2 YAML DSL v1
 
@@ -294,9 +306,9 @@ patterns:
   - id: observer
     roles:
       subject: { kind: class }
-      notify:   { kind: method, owned_by: subject }
+      notify: { kind: method, owned_by: subject }
       observer: { kind: class }
-      update:   { kind: method, owned_by: observer }
+      update: { kind: method, owned_by: observer }
     constraints:
       - type: edge
         kind: CALLS
@@ -342,13 +354,12 @@ RETURN subject, notify, observers, observerBase;
 
 ### 3.5 In-memory matcher variant (better if you want speed + portability)
 
-* Pre-index nodes by `(kind, name_tokens, route_prefix)`
-* Pre-index adjacency by `edge_kind`
-* Pattern constraint solver does:
-
-  * role binding search
-  * constraint pruning
-  * score aggregation
+- Pre-index nodes by `(kind, name_tokens, route_prefix)`
+- Pre-index adjacency by `edge_kind`
+- Pattern constraint solver does:
+  - role binding search
+  - constraint pruning
+  - score aggregation
     This avoids DB dependency for client-side diagramming.
 
 ---
@@ -365,12 +376,8 @@ RETURN subject, notify, observers, observerBase;
 
 ```js
 const elements = {
-  nodes: [
-    { data: { id: node_id, kind, name, file, language, parent } }
-  ],
-  edges: [
-    { data: { id: edge_id, source: src, target: dst, kind, confidence } }
-  ]
+  nodes: [{ data: { id: node_id, kind, name, file, language, parent } }],
+  edges: [{ data: { id: edge_id, source: src, target: dst, kind, confidence } }],
 };
 ```
 
@@ -378,8 +385,8 @@ const elements = {
 
 Use ELK as a layout service:
 
-* input: current view graph (subset of nodes/edges)
-* output: x/y positions per node
+- input: current view graph (subset of nodes/edges)
+- output: x/y positions per node
 
 Workflow:
 
@@ -402,20 +409,17 @@ Example ELK request (layered layout):
     { "id": "nodeA", "width": 160, "height": 40 },
     { "id": "nodeB", "width": 160, "height": 40 }
   ],
-  "edges": [
-    { "id": "e1", "sources": ["nodeA"], "targets": ["nodeB"] }
-  ]
+  "edges": [{ "id": "e1", "sources": ["nodeA"], "targets": ["nodeB"] }]
 }
 ```
 
 ### 4.4 Interaction model (what to implement)
 
-* **Expand/collapse**: user clicks node → projection adds owned children (`DEFINES` edges) or hides them.
-* **Lenses**: toggles that filter edge kinds and/or require tags.
-* **Pattern overlay**: enable “patterns” → draw hulls/groups for each PatternInstance:
-
-  * Render as compound nodes or bounding boxes (Cytoscape extensions can help), or
-  * Add a separate “pattern layer” UI panel listing instances; clicking highlights role nodes.
+- **Expand/collapse**: user clicks node → projection adds owned children (`DEFINES` edges) or hides them.
+- **Lenses**: toggles that filter edge kinds and/or require tags.
+- **Pattern overlay**: enable “patterns” → draw hulls/groups for each PatternInstance:
+  - Render as compound nodes or bounding boxes (Cytoscape extensions can help), or
+  - Add a separate “pattern layer” UI panel listing instances; clicking highlights role nodes.
 
 ### 4.5 Incremental updates (fast)
 
@@ -431,10 +435,10 @@ When code changes:
 
 Define a simple HTTP/IPC API:
 
-* `GET /views` (available view types)
-* `POST /view` with ViewConfig → returns `{elements, layoutHints}`
-* `POST /layout/elk` optional if layout server runs separately
-* `POST /patterns/run` to compute PatternInstances for a scope
+- `GET /views` (available view types)
+- `POST /view` with ViewConfig → returns `{elements, layoutHints}`
+- `POST /layout/elk` optional if layout server runs separately
+- `POST /patterns/run` to compute PatternInstances for a scope
 
 Example view config (call graph bounded):
 
@@ -458,10 +462,10 @@ Example view config (call graph bounded):
 2. Build DB loader (nodes + edges into Memgraph/Neo4j labels/rel-types).
 3. Implement 3–5 pattern rules in DSL and compile to Cypher.
 4. Build view service that:
+   - projects subgraphs deterministically
+   - calls ELK
+   - returns Cytoscape elements + positions
 
-   * projects subgraphs deterministically
-   * calls ELK
-   * returns Cytoscape elements + positions
 5. Add pattern overlay UI and “confidence slider.”
 
 If you paste (or describe) your chunk payload structure (fields + IDs), I can align the schemas and the loader precisely to your repo’s actual output without guessing.
