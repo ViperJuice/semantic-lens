@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { validateBundle, isValidBundle, getValidator, formatErrors } from '../../../src/schema/validator';
+import {
+  validateBundle,
+  isValidBundle,
+  getValidator,
+  formatErrors,
+} from '../../../src/schema/validator';
 
 // Import test fixtures
 import validBundle from '../../../fixtures/valid-bundle.json';
