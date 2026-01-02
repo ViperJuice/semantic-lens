@@ -1,0 +1,157 @@
+{
+  "version": "v1.0",
+  "generated_at": "2024-01-01T00:00:00Z",
+  "repo": {
+    "url": "https://github.com/example/pattern-app",
+    "commit": "pat1234567890abc",
+    "branch": "main"
+  },
+  "nodes": [
+    {"node_id": "mod-patterns-001", "kind": "module", "name": "patterns", "language": "typescript", "file": "src/patterns/index.ts", "span": [0, 2000], "route": "patterns", "visibility": "public"},
+
+    {"node_id": "cls-subject-002", "kind": "class", "name": "EventEmitter", "language": "typescript", "file": "src/patterns/observer/subject.ts", "span": [0, 300], "parent": "mod-patterns-001", "route": "patterns.observer.EventEmitter", "visibility": "public"},
+    {"node_id": "iface-observer-003", "kind": "interface", "name": "Observer", "language": "typescript", "file": "src/patterns/observer/observer.ts", "span": [0, 100], "parent": "mod-patterns-001", "route": "patterns.observer.Observer", "visibility": "public"},
+    {"node_id": "cls-logobserver-004", "kind": "class", "name": "LogObserver", "language": "typescript", "file": "src/patterns/observer/log-observer.ts", "span": [0, 150], "parent": "mod-patterns-001", "route": "patterns.observer.LogObserver", "visibility": "public"},
+    {"node_id": "cls-metricsobs-005", "kind": "class", "name": "MetricsObserver", "language": "typescript", "file": "src/patterns/observer/metrics-observer.ts", "span": [0, 160], "parent": "mod-patterns-001", "route": "patterns.observer.MetricsObserver", "visibility": "public"},
+    {"node_id": "mth-subscribe-006", "kind": "method", "name": "subscribe", "language": "typescript", "file": "src/patterns/observer/subject.ts", "span": [30, 80], "parent": "cls-subject-002", "route": "patterns.observer.EventEmitter.subscribe", "visibility": "public"},
+    {"node_id": "mth-unsubscribe-007", "kind": "method", "name": "unsubscribe", "language": "typescript", "file": "src/patterns/observer/subject.ts", "span": [85, 140], "parent": "cls-subject-002", "route": "patterns.observer.EventEmitter.unsubscribe", "visibility": "public"},
+    {"node_id": "mth-notify-008", "kind": "method", "name": "notify", "language": "typescript", "file": "src/patterns/observer/subject.ts", "span": [145, 220], "parent": "cls-subject-002", "route": "patterns.observer.EventEmitter.notify", "visibility": "public"},
+    {"node_id": "mth-update-009", "kind": "method", "name": "update", "language": "typescript", "file": "src/patterns/observer/observer.ts", "span": [20, 60], "parent": "iface-observer-003", "route": "patterns.observer.Observer.update", "visibility": "public"},
+    {"node_id": "mth-logupdate-010", "kind": "method", "name": "update", "language": "typescript", "file": "src/patterns/observer/log-observer.ts", "span": [30, 100], "parent": "cls-logobserver-004", "route": "patterns.observer.LogObserver.update", "visibility": "public"},
+    {"node_id": "mth-metricsupdate-011", "kind": "method", "name": "update", "language": "typescript", "file": "src/patterns/observer/metrics-observer.ts", "span": [30, 110], "parent": "cls-metricsobs-005", "route": "patterns.observer.MetricsObserver.update", "visibility": "public"},
+    {"node_id": "fld-observers-012", "kind": "field", "name": "observers", "language": "typescript", "file": "src/patterns/observer/subject.ts", "span": [10, 25], "parent": "cls-subject-002", "visibility": "private"},
+
+    {"node_id": "iface-strategy-013", "kind": "interface", "name": "PaymentStrategy", "language": "typescript", "file": "src/patterns/strategy/strategy.ts", "span": [0, 80], "parent": "mod-patterns-001", "route": "patterns.strategy.PaymentStrategy", "visibility": "public"},
+    {"node_id": "cls-context-014", "kind": "class", "name": "PaymentProcessor", "language": "typescript", "file": "src/patterns/strategy/context.ts", "span": [0, 200], "parent": "mod-patterns-001", "route": "patterns.strategy.PaymentProcessor", "visibility": "public"},
+    {"node_id": "cls-creditcard-015", "kind": "class", "name": "CreditCardStrategy", "language": "typescript", "file": "src/patterns/strategy/credit-card.ts", "span": [0, 150], "parent": "mod-patterns-001", "route": "patterns.strategy.CreditCardStrategy", "visibility": "public"},
+    {"node_id": "cls-paypal-016", "kind": "class", "name": "PayPalStrategy", "language": "typescript", "file": "src/patterns/strategy/paypal.ts", "span": [0, 140], "parent": "mod-patterns-001", "route": "patterns.strategy.PayPalStrategy", "visibility": "public"},
+    {"node_id": "mth-pay-017", "kind": "method", "name": "pay", "language": "typescript", "file": "src/patterns/strategy/strategy.ts", "span": [20, 50], "parent": "iface-strategy-013", "route": "patterns.strategy.PaymentStrategy.pay", "visibility": "public"},
+    {"node_id": "mth-processpay-018", "kind": "method", "name": "processPayment", "language": "typescript", "file": "src/patterns/strategy/context.ts", "span": [50, 120], "parent": "cls-context-014", "route": "patterns.strategy.PaymentProcessor.processPayment", "visibility": "public"},
+    {"node_id": "mth-setstrat-019", "kind": "method", "name": "setStrategy", "language": "typescript", "file": "src/patterns/strategy/context.ts", "span": [125, 160], "parent": "cls-context-014", "route": "patterns.strategy.PaymentProcessor.setStrategy", "visibility": "public"},
+    {"node_id": "mth-ccpay-020", "kind": "method", "name": "pay", "language": "typescript", "file": "src/patterns/strategy/credit-card.ts", "span": [30, 100], "parent": "cls-creditcard-015", "route": "patterns.strategy.CreditCardStrategy.pay", "visibility": "public"},
+    {"node_id": "mth-pppay-021", "kind": "method", "name": "pay", "language": "typescript", "file": "src/patterns/strategy/paypal.ts", "span": [30, 95], "parent": "cls-paypal-016", "route": "patterns.strategy.PayPalStrategy.pay", "visibility": "public"},
+    {"node_id": "fld-strategy-022", "kind": "field", "name": "strategy", "language": "typescript", "file": "src/patterns/strategy/context.ts", "span": [10, 35], "parent": "cls-context-014", "visibility": "private"},
+
+    {"node_id": "iface-product-023", "kind": "interface", "name": "Product", "language": "typescript", "file": "src/patterns/factory/product.ts", "span": [0, 60], "parent": "mod-patterns-001", "route": "patterns.factory.Product", "visibility": "public"},
+    {"node_id": "cls-factory-024", "kind": "class", "name": "ProductFactory", "language": "typescript", "file": "src/patterns/factory/factory.ts", "span": [0, 250], "parent": "mod-patterns-001", "route": "patterns.factory.ProductFactory", "visibility": "public"},
+    {"node_id": "cls-concreteA-025", "kind": "class", "name": "ConcreteProductA", "language": "typescript", "file": "src/patterns/factory/concrete-a.ts", "span": [0, 120], "parent": "mod-patterns-001", "route": "patterns.factory.ConcreteProductA", "visibility": "public"},
+    {"node_id": "cls-concreteB-026", "kind": "class", "name": "ConcreteProductB", "language": "typescript", "file": "src/patterns/factory/concrete-b.ts", "span": [0, 130], "parent": "mod-patterns-001", "route": "patterns.factory.ConcreteProductB", "visibility": "public"},
+    {"node_id": "mth-createprod-027", "kind": "method", "name": "createProduct", "language": "typescript", "file": "src/patterns/factory/factory.ts", "span": [30, 150], "parent": "cls-factory-024", "route": "patterns.factory.ProductFactory.createProduct", "visibility": "public", "signature": "(type: string) => Product"},
+    {"node_id": "mth-operation-028", "kind": "method", "name": "operation", "language": "typescript", "file": "src/patterns/factory/product.ts", "span": [20, 45], "parent": "iface-product-023", "route": "patterns.factory.Product.operation", "visibility": "public"},
+    {"node_id": "mth-operationA-029", "kind": "method", "name": "operation", "language": "typescript", "file": "src/patterns/factory/concrete-a.ts", "span": [30, 80], "parent": "cls-concreteA-025", "route": "patterns.factory.ConcreteProductA.operation", "visibility": "public"},
+    {"node_id": "mth-operationB-030", "kind": "method", "name": "operation", "language": "typescript", "file": "src/patterns/factory/concrete-b.ts", "span": [30, 85], "parent": "cls-concreteB-026", "route": "patterns.factory.ConcreteProductB.operation", "visibility": "public"},
+
+    {"node_id": "cls-singleton-031", "kind": "class", "name": "ConfigManager", "language": "typescript", "file": "src/patterns/singleton/config.ts", "span": [0, 200], "parent": "mod-patterns-001", "route": "patterns.singleton.ConfigManager", "visibility": "public"},
+    {"node_id": "mth-getinstance-032", "kind": "method", "name": "getInstance", "language": "typescript", "file": "src/patterns/singleton/config.ts", "span": [30, 80], "parent": "cls-singleton-031", "route": "patterns.singleton.ConfigManager.getInstance", "visibility": "public", "signature": "() => ConfigManager"},
+    {"node_id": "mth-getconfig-033", "kind": "method", "name": "getConfig", "language": "typescript", "file": "src/patterns/singleton/config.ts", "span": [85, 130], "parent": "cls-singleton-031", "route": "patterns.singleton.ConfigManager.getConfig", "visibility": "public"},
+    {"node_id": "fld-instance-034", "kind": "field", "name": "instance", "language": "typescript", "file": "src/patterns/singleton/config.ts", "span": [10, 25], "parent": "cls-singleton-031", "visibility": "private"}
+  ],
+  "edges": [
+    {"edge_id": "pe-impl-001", "kind": "implements", "src": "cls-logobserver-004", "dst": "iface-observer-003", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-impl-002", "kind": "implements", "src": "cls-metricsobs-005", "dst": "iface-observer-003", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-impl-003", "kind": "implements", "src": "cls-creditcard-015", "dst": "iface-strategy-013", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-impl-004", "kind": "implements", "src": "cls-paypal-016", "dst": "iface-strategy-013", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-impl-005", "kind": "implements", "src": "cls-concreteA-025", "dst": "iface-product-023", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-impl-006", "kind": "implements", "src": "cls-concreteB-026", "dst": "iface-product-023", "confidence": 1.0, "evidence": ["static_analysis"]},
+
+    {"edge_id": "pe-uses-001", "kind": "uses", "src": "cls-subject-002", "dst": "iface-observer-003", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-uses-002", "kind": "uses", "src": "cls-context-014", "dst": "iface-strategy-013", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-uses-003", "kind": "uses", "src": "cls-factory-024", "dst": "iface-product-023", "confidence": 1.0, "evidence": ["static_analysis"]},
+
+    {"edge_id": "pe-call-001", "kind": "calls", "src": "mth-notify-008", "dst": "mth-update-009", "confidence": 0.95, "evidence": ["static_analysis", "lsp"]},
+    {"edge_id": "pe-call-002", "kind": "calls", "src": "mth-processpay-018", "dst": "mth-pay-017", "confidence": 0.95, "evidence": ["static_analysis", "lsp"]},
+    {"edge_id": "pe-call-003", "kind": "calls", "src": "mth-createprod-027", "dst": "mth-operation-028", "confidence": 0.8, "evidence": ["heuristic"]},
+    {"edge_id": "pe-call-004", "kind": "calls", "src": "mth-getinstance-032", "dst": "mth-getconfig-033", "confidence": 0.7, "evidence": ["heuristic"]},
+
+    {"edge_id": "pe-def-001", "kind": "defines", "src": "cls-subject-002", "dst": "mth-subscribe-006", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-002", "kind": "defines", "src": "cls-subject-002", "dst": "mth-unsubscribe-007", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-003", "kind": "defines", "src": "cls-subject-002", "dst": "mth-notify-008", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-004", "kind": "defines", "src": "iface-observer-003", "dst": "mth-update-009", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-005", "kind": "defines", "src": "cls-logobserver-004", "dst": "mth-logupdate-010", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-006", "kind": "defines", "src": "cls-metricsobs-005", "dst": "mth-metricsupdate-011", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-007", "kind": "defines", "src": "cls-context-014", "dst": "mth-processpay-018", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-008", "kind": "defines", "src": "cls-context-014", "dst": "mth-setstrat-019", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-009", "kind": "defines", "src": "iface-strategy-013", "dst": "mth-pay-017", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-010", "kind": "defines", "src": "cls-creditcard-015", "dst": "mth-ccpay-020", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-011", "kind": "defines", "src": "cls-paypal-016", "dst": "mth-pppay-021", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-012", "kind": "defines", "src": "cls-factory-024", "dst": "mth-createprod-027", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-013", "kind": "defines", "src": "iface-product-023", "dst": "mth-operation-028", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-014", "kind": "defines", "src": "cls-concreteA-025", "dst": "mth-operationA-029", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-015", "kind": "defines", "src": "cls-concreteB-026", "dst": "mth-operationB-030", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-016", "kind": "defines", "src": "cls-singleton-031", "dst": "mth-getinstance-032", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-def-017", "kind": "defines", "src": "cls-singleton-031", "dst": "mth-getconfig-033", "confidence": 1.0, "evidence": ["static_analysis"]},
+
+    {"edge_id": "pe-reads-001", "kind": "reads", "src": "mth-notify-008", "dst": "fld-observers-012", "confidence": 0.9, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-reads-002", "kind": "reads", "src": "mth-processpay-018", "dst": "fld-strategy-022", "confidence": 0.9, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-reads-003", "kind": "reads", "src": "mth-getinstance-032", "dst": "fld-instance-034", "confidence": 0.95, "evidence": ["static_analysis"]},
+
+    {"edge_id": "pe-writes-001", "kind": "writes", "src": "mth-subscribe-006", "dst": "fld-observers-012", "confidence": 0.9, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-writes-002", "kind": "writes", "src": "mth-unsubscribe-007", "dst": "fld-observers-012", "confidence": 0.9, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-writes-003", "kind": "writes", "src": "mth-setstrat-019", "dst": "fld-strategy-022", "confidence": 0.9, "evidence": ["static_analysis"]},
+    {"edge_id": "pe-writes-004", "kind": "writes", "src": "mth-getinstance-032", "dst": "fld-instance-034", "confidence": 0.85, "evidence": ["heuristic"]}
+  ],
+  "annotations": [
+    {"target_id": "cls-subject-002", "tags": ["pattern:observer", "subject"]},
+    {"target_id": "iface-observer-003", "tags": ["pattern:observer", "observer-interface"]},
+    {"target_id": "cls-logobserver-004", "tags": ["pattern:observer", "concrete-observer"]},
+    {"target_id": "cls-metricsobs-005", "tags": ["pattern:observer", "concrete-observer"]},
+    {"target_id": "iface-strategy-013", "tags": ["pattern:strategy", "strategy-interface"]},
+    {"target_id": "cls-context-014", "tags": ["pattern:strategy", "context"]},
+    {"target_id": "cls-creditcard-015", "tags": ["pattern:strategy", "concrete-strategy"]},
+    {"target_id": "cls-paypal-016", "tags": ["pattern:strategy", "concrete-strategy"]},
+    {"target_id": "iface-product-023", "tags": ["pattern:factory", "product-interface"]},
+    {"target_id": "cls-factory-024", "tags": ["pattern:factory", "factory"]},
+    {"target_id": "cls-concreteA-025", "tags": ["pattern:factory", "concrete-product"]},
+    {"target_id": "cls-concreteB-026", "tags": ["pattern:factory", "concrete-product"]},
+    {"target_id": "cls-singleton-031", "tags": ["pattern:singleton"]},
+    {"target_id": "mth-getinstance-032", "tags": ["pattern:singleton", "getInstance"]}
+  ],
+  "patterns": [
+    {
+      "instance_id": "pat-observer-001",
+      "pattern_id": "observer",
+      "roles": {
+        "subject": "cls-subject-002",
+        "observer_interface": "iface-observer-003",
+        "concrete_observer_1": "cls-logobserver-004",
+        "concrete_observer_2": "cls-metricsobs-005"
+      },
+      "confidence": 0.95,
+      "evidence": ["Subject has subscribe/unsubscribe/notify methods", "Multiple concrete observers implement Observer interface"]
+    },
+    {
+      "instance_id": "pat-strategy-001",
+      "pattern_id": "strategy",
+      "roles": {
+        "context": "cls-context-014",
+        "strategy_interface": "iface-strategy-013",
+        "concrete_strategy_1": "cls-creditcard-015",
+        "concrete_strategy_2": "cls-paypal-016"
+      },
+      "confidence": 0.92,
+      "evidence": ["Context holds strategy reference", "Context delegates to strategy via interface", "Multiple concrete strategies implement interface"]
+    },
+    {
+      "instance_id": "pat-factory-001",
+      "pattern_id": "factory_method",
+      "roles": {
+        "factory": "cls-factory-024",
+        "product_interface": "iface-product-023",
+        "concrete_product_1": "cls-concreteA-025",
+        "concrete_product_2": "cls-concreteB-026"
+      },
+      "confidence": 0.88,
+      "evidence": ["Factory has createProduct method returning Product interface", "Multiple concrete products implement Product"]
+    },
+    {
+      "instance_id": "pat-singleton-001",
+      "pattern_id": "singleton",
+      "roles": {
+        "singleton_class": "cls-singleton-031"
+      },
+      "confidence": 0.90,
+      "evidence": ["Class has static getInstance method", "Private instance field", "Constructor likely private"],
+      "explain": "ConfigManager follows singleton pattern with getInstance() accessor and private instance field"
+    }
+  ]
+}

@@ -26,3 +26,27 @@ export {
   createMemgraphStore,
   isMemgraphAvailable,
 } from './memgraph-store.js';
+
+// Bundle loader
+export type {
+  LoadOptions,
+  LoadResult,
+  LoadProgress,
+  ProgressCallback,
+} from './loader.js';
+export { loadBundleToStore } from './loader.js';
+
+// Query utilities
+export type { Path } from './queries.js';
+export {
+  getPath,
+  getConnectedComponent,
+  findByRoute,
+  findByFile,
+  findByKind,
+  getCallers,
+  getCallees,
+  getCallGraph,
+  findOrphanNodes,
+  findConnectedNodes,
+} from './queries.js';

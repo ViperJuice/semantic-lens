@@ -1,0 +1,214 @@
+{
+  "version": "v1.0",
+  "generated_at": "2024-01-01T00:00:00Z",
+  "repo": {
+    "url": "https://github.com/example/sample-app",
+    "commit": "abc1234567890def",
+    "branch": "main"
+  },
+  "nodes": [
+    {
+      "node_id": "mod-app-001",
+      "kind": "module",
+      "name": "app",
+      "language": "typescript",
+      "file": "src/app.ts",
+      "span": [0, 500],
+      "route": "app",
+      "visibility": "public"
+    },
+    {
+      "node_id": "cls-user-002",
+      "kind": "class",
+      "name": "UserService",
+      "language": "typescript",
+      "file": "src/services/user.ts",
+      "span": [0, 300],
+      "parent": "mod-app-001",
+      "route": "app.services.UserService",
+      "visibility": "public"
+    },
+    {
+      "node_id": "cls-order-003",
+      "kind": "class",
+      "name": "OrderService",
+      "language": "typescript",
+      "file": "src/services/order.ts",
+      "span": [0, 400],
+      "parent": "mod-app-001",
+      "route": "app.services.OrderService",
+      "visibility": "public"
+    },
+    {
+      "node_id": "mth-getuser-004",
+      "kind": "method",
+      "name": "getUser",
+      "language": "typescript",
+      "file": "src/services/user.ts",
+      "span": [50, 120],
+      "parent": "cls-user-002",
+      "route": "app.services.UserService.getUser",
+      "visibility": "public",
+      "signature": "(id: string) => Promise<User>"
+    },
+    {
+      "node_id": "mth-createorder-005",
+      "kind": "method",
+      "name": "createOrder",
+      "language": "typescript",
+      "file": "src/services/order.ts",
+      "span": [50, 200],
+      "parent": "cls-order-003",
+      "route": "app.services.OrderService.createOrder",
+      "visibility": "public",
+      "signature": "(userId: string, items: Item[]) => Promise<Order>"
+    },
+    {
+      "node_id": "func-validate-006",
+      "kind": "function",
+      "name": "validateOrder",
+      "language": "typescript",
+      "file": "src/utils/validation.ts",
+      "span": [0, 100],
+      "route": "app.utils.validateOrder",
+      "visibility": "public"
+    },
+    {
+      "node_id": "iface-user-007",
+      "kind": "interface",
+      "name": "User",
+      "language": "typescript",
+      "file": "src/types/user.ts",
+      "span": [0, 50],
+      "route": "app.types.User",
+      "visibility": "public"
+    },
+    {
+      "node_id": "iface-order-008",
+      "kind": "interface",
+      "name": "Order",
+      "language": "typescript",
+      "file": "src/types/order.ts",
+      "span": [0, 80],
+      "route": "app.types.Order",
+      "visibility": "public"
+    },
+    {
+      "node_id": "fld-userid-009",
+      "kind": "field",
+      "name": "userId",
+      "language": "typescript",
+      "file": "src/services/order.ts",
+      "span": [10, 30],
+      "parent": "cls-order-003",
+      "visibility": "private"
+    },
+    {
+      "node_id": "prop-name-010",
+      "kind": "property",
+      "name": "name",
+      "language": "typescript",
+      "file": "src/types/user.ts",
+      "span": [10, 25],
+      "parent": "iface-user-007",
+      "visibility": "public"
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "edge-def-001",
+      "kind": "defines",
+      "src": "mod-app-001",
+      "dst": "cls-user-002",
+      "confidence": 1.0,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge-def-002",
+      "kind": "defines",
+      "src": "mod-app-001",
+      "dst": "cls-order-003",
+      "confidence": 1.0,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge-def-003",
+      "kind": "defines",
+      "src": "cls-user-002",
+      "dst": "mth-getuser-004",
+      "confidence": 1.0,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge-def-004",
+      "kind": "defines",
+      "src": "cls-order-003",
+      "dst": "mth-createorder-005",
+      "confidence": 1.0,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge-call-001",
+      "kind": "calls",
+      "src": "mth-createorder-005",
+      "dst": "mth-getuser-004",
+      "confidence": 0.95,
+      "evidence": ["static_analysis", "lsp"]
+    },
+    {
+      "edge_id": "edge-call-002",
+      "kind": "calls",
+      "src": "mth-createorder-005",
+      "dst": "func-validate-006",
+      "confidence": 0.9,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge-uses-001",
+      "kind": "uses",
+      "src": "mth-getuser-004",
+      "dst": "iface-user-007",
+      "confidence": 1.0,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge-uses-002",
+      "kind": "uses",
+      "src": "mth-createorder-005",
+      "dst": "iface-order-008",
+      "confidence": 1.0,
+      "evidence": ["static_analysis"]
+    },
+    {
+      "edge_id": "edge-reads-001",
+      "kind": "reads",
+      "src": "mth-createorder-005",
+      "dst": "fld-userid-009",
+      "confidence": 0.8,
+      "evidence": ["heuristic"]
+    },
+    {
+      "edge_id": "edge-import-001",
+      "kind": "imports",
+      "src": "cls-order-003",
+      "dst": "cls-user-002",
+      "confidence": 1.0,
+      "evidence": ["static_analysis"]
+    }
+  ],
+  "annotations": [
+    {
+      "target_id": "cls-user-002",
+      "tags": ["service", "domain"]
+    },
+    {
+      "target_id": "cls-order-003",
+      "tags": ["service", "domain"],
+      "kv": {
+        "complexity": "high",
+        "needs_review": true
+      }
+    }
+  ],
+  "patterns": []
+}
