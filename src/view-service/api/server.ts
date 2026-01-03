@@ -23,8 +23,8 @@ import { createFormatter, type CytoscapeFormatter, type CytoscapeElements } from
  * Options for creating the view server.
  */
 export interface ViewServiceOptions {
-  /** Port to listen on (default: 3000) */
-  port?: number;
+  /** Port to listen on (default: 3001, or VIEW_SERVICE_PORT env var) */
+  port: number;
   /** Graph store instance */
   store: GraphStore;
   /** Pattern matcher instance */
@@ -199,7 +199,7 @@ function createApp(
  * @returns View server with start/stop methods
  */
 export function createViewServer(options: ViewServiceOptions): ViewServer {
-  const { port = 3000, store, matcher } = options;
+  const { port, store, matcher } = options;
 
   const projector = createProjector();
   const layoutEngine = createELKLayoutEngine();
@@ -220,7 +220,17 @@ export function createViewServer(options: ViewServiceOptions): ViewServer {
             resolve();
           });
 
-          server.on('error', reject);
+          server.on('error', (err: NodeJS.ErrnoException) => {
+            if (err.code === 'EADDRINUSE') {
+              reject(new Error(
+                `Port ${port} is already in use. ` +
+                `This should not happen (port was pre-checked). ` +
+                `Please report this as a bug.`
+              ));
+            } else {
+              reject(err);
+            }
+          });
         } catch (err) {
           reject(err);
         }

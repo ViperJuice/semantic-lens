@@ -208,12 +208,20 @@ npm run test:watch
 
 ### Development Server
 ```bash
-# Start the visualization server
-npm run build && node dist/cli/index.js serve --port 3000
+# Start the visualization server (uses port 3001 with dynamic fallback)
+npm run build && node dist/cli/index.js serve
 
 # Or use the CLI directly
-npx semantic-lens serve --port 3000 --bundle fixtures/valid-bundle.json
+npx semantic-lens serve --bundle fixtures/valid-bundle.json
+
+# Specify explicit port (will fail if unavailable)
+npx semantic-lens serve --port 8080 --bundle fixtures/valid-bundle.json
+
+# Use environment variable
+VIEW_SERVICE_PORT=8080 npx semantic-lens serve --bundle fixtures/valid-bundle.json
 ```
+
+**Note:** The server uses dynamic port checking. If the default port 3001 is unavailable, it automatically finds the next available port (3002, 3003, etc.). Explicit ports set via `--port` flag or `VIEW_SERVICE_PORT` env var will fail immediately if unavailable instead of falling back.
 
 ### Validation
 ```bash

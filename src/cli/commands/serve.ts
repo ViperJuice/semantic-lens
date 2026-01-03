@@ -10,6 +10,7 @@ import { loadBundleToStore } from '../../graph/loader.js';
 import { createPatternMatcher } from '../../patterns/matcher/matcher.js';
 import { parsePatternDefinition } from '../../patterns/dsl/parser.js';
 import { createViewServer, type ViewServiceOptions } from '../../view-service/api/server.js';
+import { resolvePort, getPortFromEnv } from '../../view-service/api/port-utils.js';
 import type { GraphStore } from '../../graph/store.js';
 import type { PatternMatcherInterface } from '../../patterns/matcher/matcher.js';
 import type { SemanticGraphBundle } from '../../schema/types.js';
@@ -18,7 +19,7 @@ import type { SemanticGraphBundle } from '../../schema/types.js';
  * Options for the serve command.
  */
 export interface ServeCommandOptions {
-  /** Server port (default: 3000) */
+  /** Server port (default: 3001, or VIEW_SERVICE_PORT env var) */
   port?: string;
   /** Bundle file to pre-load */
   bundle?: string;
@@ -78,8 +79,36 @@ scoring:
 /**
  * Create server context with store and matcher.
  */
-export function createServerContext(options: ServeCommandOptions): ServerContext {
-  const port = options.port ? parseInt(options.port, 10) : 3000;
+export async function createServerContext(options: ServeCommandOptions): Promise<ServerContext> {
+  // Parse CLI port
+  let requestedPort: number | undefined;
+  if (options.port) {
+    requestedPort = parseInt(options.port, 10);
+    if (isNaN(requestedPort) || requestedPort < 1 || requestedPort > 65535) {
+      throw new Error(`Invalid port: ${options.port}. Port must be between 1 and 65535.`);
+    }
+  }
+
+  // Check environment
+  const envPort = getPortFromEnv(3001);
+
+  // Determine if explicitly set
+  const portToResolve = requestedPort ?? envPort;
+  const wasExplicitlySet =
+    requestedPort !== undefined ||
+    process.env.VIEW_SERVICE_PORT !== undefined;
+
+  // Resolve with fallback control
+  const { port, didFallback } = await resolvePort(
+    portToResolve,
+    !wasExplicitlySet  // Only fallback for defaults
+  );
+
+  // Log fallback
+  if (didFallback) {
+    console.log(`⚠️  Default port ${portToResolve} unavailable, using port ${port}`);
+  }
+
   const store = createInMemoryStore();
   const matcher = createPatternMatcher();
 
@@ -103,7 +132,7 @@ export function createServerContext(options: ServeCommandOptions): ServerContext
  */
 export async function serveCommand(options: ServeCommandOptions): Promise<number> {
   try {
-    const context = createServerContext(options);
+    const context = await createServerContext(options);
     const { port, store, matcher } = context;
 
     // Pre-load bundle if specified

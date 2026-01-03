@@ -42,10 +42,25 @@ semantic-lens patterns --bundle bundle.json --output patterns.json
 ### 3. Start the Visualization Server
 
 ```bash
-semantic-lens serve --port 3000 --bundle bundle.json
+semantic-lens serve --bundle bundle.json
 ```
 
-Then open http://localhost:3000 in your browser.
+Then open http://localhost:3001 in your browser.
+
+**Port Configuration:**
+
+The server uses port 3001 by default and automatically finds the next available port if needed:
+
+```bash
+# Use default port (3001, auto-fallback to 3002+ if unavailable)
+semantic-lens serve
+
+# Specify port explicitly
+semantic-lens serve --port 8080
+
+# Use environment variable
+VIEW_SERVICE_PORT=8080 semantic-lens serve
+```
 
 ## CLI Commands
 

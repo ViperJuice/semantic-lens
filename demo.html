@@ -211,6 +211,7 @@
         </select>
         <select id="layoutType">
           <option value="community">Community (recommended)</option>
+          <option value="elk">ELK (server-side)</option>
           <option value="hierarchy">Hierarchical (by file)</option>
           <option value="cola">Force-directed (cola)</option>
           <option value="grid">Grid</option>
@@ -219,8 +220,35 @@
       </div>
 
       <div class="sidebar-section">
+        <h3>Data Source</h3>
+        <select id="fixtureSelect">
+          <option value="api">Live API</option>
+          <option value="fixtures/semantic-lens-v4.slb" selected>semantic-lens-v4 (435 nodes)</option>
+          <option value="fixtures/semantic-lens-v3.slb">semantic-lens-v3 (435 nodes)</option>
+          <option value="fixtures/realistic-bundle.json">realistic-bundle (37 nodes)</option>
+        </select>
+      </div>
+
+      <div class="sidebar-section">
         <h3>Search</h3>
         <input type="text" id="search" placeholder="Search nodes...">
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Level of Detail</h3>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+          <input type="checkbox" id="showMethods" style="width: auto; margin: 0;">
+          <span>Show Methods</span>
+        </label>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Edge Filtering</h3>
+        <select id="edgeFilter">
+          <option value="all">All Edges</option>
+          <option value="non-synthetic">Non-Synthetic Only</option>
+          <option value="structural">Structural Only (defines/inherits/implements)</option>
+        </select>
       </div>
 
       <div class="sidebar-section">
@@ -298,13 +326,19 @@
       cytoscape.use(cytoscapeFcose);
     }
 
-    const API = 'http://localhost:3001';
+    // Make API URL configurable via URL parameter (?apiPort=3002)
+    const urlParams = new URLSearchParams(window.location.search);
+    const apiPort = urlParams.get('apiPort') || '3001';
+    const API = `http://localhost:${apiPort}`;
+    console.log(`📡 Connecting to view service at: ${API}`);
     let cy;
     let allData = null;
     let enabledKinds = new Set(['module', 'class', 'interface', 'function', 'method', 'field', 'property', 'trait']);
     let selectedFile = null;
     let autoFitEnabled = true;
     let isZoomedIn = false;  // Track if we're in zoomed/focused view
+    let showMethodsEnabled = false;  // Track if methods should be visible (default: hidden)
+    let edgeFilterMode = 'all';  // Track edge filtering: 'all', 'non-synthetic', 'structural'
 
     // Node colors by kind
     const kindColors = {
@@ -420,6 +454,174 @@
           node.addClass('expected-isolated');
         }
       });
+    }
+
+    // Apply level-of-detail visibility (hide/show methods)
+    function applyLevelOfDetail() {
+      if (!cy) return;
+
+      if (showMethodsEnabled) {
+        // Show all methods
+        cy.nodes('[kind = "method"]').style('display', 'element');
+      } else {
+        // Hide methods by default
+        cy.nodes('[kind = "method"]').style('display', 'none');
+      }
+    }
+
+    // Toggle method visibility for a specific parent node (click-to-expand)
+    function toggleChildrenVisibility(parentNode) {
+      if (!cy || !parentNode) return;
+
+      const children = parentNode.children('[kind = "method"]');
+      if (children.length === 0) return;
+
+      // Check if any children are currently hidden
+      const anyHidden = children.some(child => child.style('display') === 'none');
+
+      if (anyHidden) {
+        // Expand: show all children
+        children.style('display', 'element');
+      } else {
+        // Collapse: hide all children
+        children.style('display', 'none');
+      }
+    }
+
+    // ========================================
+    // ELK LAYOUT INTEGRATION
+    // ========================================
+
+    // Helper to POST JSON to server
+    async function postJSON(url, body) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+      return await res.json();
+    }
+
+    // Build ELK payload from visible Cytoscape nodes/edges
+    // Server expects {nodes: Node[], edges: Edge[]} format
+    // topLevelOnly: if true, only include nodes without parents (for global layout)
+    function buildElkPayloadFromCy(cy, topLevelOnly = false) {
+      let nodesToLayout = cy.nodes(':visible');
+      if (topLevelOnly) {
+        nodesToLayout = nodesToLayout.filter(n => !n.data('parent'));
+      }
+
+      const nodes = nodesToLayout.map(n => {
+        const data = n.data();
+        // Build minimal Node object from Cytoscape data
+        return {
+          node_id: data.id,
+          kind: data.kind || 'module',
+          name: data.label || data.name || data.id,
+          file: data.file || 'unknown',
+          route: data.route || data.id,
+          span: data.span || { start: { line: 0, col: 0 }, end: { line: 0, col: 0 } },
+          visibility: data.visibility || 'public',
+          language: data.language || 'typescript',
+          parent: topLevelOnly ? undefined : data.parent,  // Skip parent when doing top-level only
+          signature: data.signature,
+        };
+      });
+
+      const nodeIds = new Set(nodes.map(n => n.node_id));
+
+      const edges = cy.edges(':visible').map(e => {
+        const data = e.data();
+        // Check if edge connects nodes in our layout set
+        if (!nodeIds.has(data.source) || !nodeIds.has(data.target)) {
+          return null;  // Skip edges to/from filtered-out nodes
+        }
+
+        // Apply weight penalty to synthetic edges
+        const isSynthetic = data.kind === 'sibling' || (data.id && data.id.startsWith('synth_'));
+        const layoutWeight = isSynthetic ? 0.1 : 1.0;
+
+        return {
+          edge_id: data.id,
+          kind: data.kind || 'uses',
+          src: data.source,
+          dst: data.target,
+          confidence: data.confidence || 1.0,
+          evidence: data.evidence || ['visual'],
+          layoutWeight: layoutWeight,  // Weight penalty for synthetic edges
+        };
+      }).filter(e => e !== null);
+
+      return { nodes, edges };
+    }
+
+    // Apply ELK layout positions to Cytoscape
+    function applyElkLayoutToCy(cy, positions) {
+      // Server returns {positions: {nodeId: {x, y}}}
+      cy.batch(() => {
+        cy.nodes().forEach(n => {
+          const pos = positions[n.id()];
+          if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+            n.position(pos);
+          }
+        });
+      });
+
+      cy.layout({ name: 'preset', fit: true, animate: true, animationDuration: 400 }).run();
+    }
+
+    // Local layout for children inside a container node
+    // Used when expanding a compound node in detail mode
+    function layoutChildrenInsideContainer(parentNode) {
+      if (!parentNode || !cy) return;
+
+      const children = parentNode.children();
+      if (children.length === 0) return;
+
+      // Choose layout based on child count
+      const layoutName = children.length <= 6 ? 'grid' : 'circle';
+
+      children.layout({
+        name: layoutName,
+        fit: false,
+        animate: true,
+        animationDuration: 300,
+        boundingBox: parentNode.boundingBox(),
+        avoidOverlap: true,
+        padding: 10
+      }).run();
+    }
+
+    // Run ELK layout via server
+    async function runElkLayout(cy) {
+      try {
+        const payload = buildElkPayloadFromCy(cy);
+        console.log('Sending ELK layout request with', payload.nodes.length, 'nodes');
+
+        const result = await postJSON(`${API}/layout/elk`, payload);
+
+        // Server returns {positions: {nodeId: {x, y}}}
+        if (!result.positions) {
+          throw new Error('Server response missing positions field');
+        }
+
+        applyElkLayoutToCy(cy, result.positions);
+        console.log('ELK layout applied successfully');
+
+        // Apply post-layout operations
+        markSuspiciousNodes();
+        if (colorByConnectivityEnabled) {
+          colorByConnectivity();
+        }
+        applyLevelOfDetail();
+      } catch (err) {
+        console.error('ELK layout failed:', err);
+        alert('ELK layout failed: ' + err.message + '\n\nMake sure the view service is running on ' + API);
+      }
     }
 
     // ========================================
@@ -775,6 +977,30 @@
     let focusedCluster = null;
     const ZOOM_THRESHOLD = 1.5;
 
+    // Semantic zoom modes
+    const ZOOM_MODE = {
+      OVERVIEW: 'overview',
+      STRUCTURE: 'structure',
+      DETAIL: 'detail'
+    };
+
+    // Zoom thresholds (narrow transitions)
+    const ZOOM_THRESHOLDS = {
+      OVERVIEW_MAX: 0.3,
+      STRUCTURE_MAX: 0.8
+    };
+
+    let currentZoomMode = ZOOM_MODE.STRUCTURE;
+    let previousZoomMode = null;
+    let zoomDebounceTimer = null;
+    const ZOOM_DEBOUNCE_MS = 50;
+
+    function getZoomModeFromLevel(zoomLevel) {
+      if (zoomLevel < ZOOM_THRESHOLDS.OVERVIEW_MAX) return ZOOM_MODE.OVERVIEW;
+      if (zoomLevel < ZOOM_THRESHOLDS.STRUCTURE_MAX) return ZOOM_MODE.STRUCTURE;
+      return ZOOM_MODE.DETAIL;
+    }
+
     // Debounce helper
     function debounce(fn, delay) {
       let timer;
@@ -957,6 +1183,143 @@
         .update();
     }
 
+    // ========================================
+    // SEMANTIC ZOOM STYLE FUNCTIONS
+    // ========================================
+
+    // Overview mode: 10-12px dots, no labels, methods hidden
+    function getOverviewStyles() {
+      return [
+        { selector: ':parent', style: {
+          'width': '12px',
+          'height': '12px',
+          'shape': 'ellipse',
+          'label': '',
+          'padding': '0px',
+          'background-opacity': 0.8
+        }},
+        { selector: 'node.code', style: {
+          'width': '10px',
+          'height': '10px',
+          'shape': 'ellipse',
+          'label': ''
+        }},
+        { selector: 'node[kind="method"]', style: {
+          'display': 'none'
+        }},
+        { selector: 'edge', style: {
+          'width': 0.5,
+          'opacity': 0.4
+        }}
+      ];
+    }
+
+    // Structure mode: Icons with labels below
+    function getStructureStyles() {
+      const nodeSize = layoutParams ? layoutParams.nodeSize : 14;
+      return [
+        { selector: ':parent', style: {
+          'width': nodeSize * 1.5,
+          'height': nodeSize * 1.5,
+          'shape': 'round-rectangle',
+          'label': 'data(label)',
+          'text-valign': 'bottom',
+          'text-margin-y': 6,
+          'padding': '10px',
+          'font-size': '10px',
+          'background-opacity': 0.6
+        }},
+        { selector: 'node.code', style: {
+          'width': nodeSize,
+          'height': nodeSize,
+          'shape': 'ellipse',
+          'label': 'data(label)',
+          'text-valign': 'bottom',
+          'text-margin-y': 4,
+          'font-size': '9px'
+        }},
+        { selector: 'node[kind="method"]', style: {
+          'display': 'none'
+        }},
+        { selector: 'edge', style: {
+          'width': 1,
+          'opacity': 0.7
+        }}
+      ];
+    }
+
+    // Detail mode: Full containers, auto-fit children, methods visible
+    function getDetailStyles() {
+      const nodeSize = layoutParams ? layoutParams.nodeSize : 14;
+      return [
+        { selector: ':parent', style: {
+          'width': null,  // auto-fit
+          'height': null,  // auto-fit
+          'shape': 'round-rectangle',
+          'label': 'data(label)',
+          'text-valign': 'top',
+          'text-margin-y': -10,
+          'padding': '25px',
+          'font-size': '12px',
+          'background-opacity': 0.6
+        }},
+        { selector: 'node.code', style: {
+          'width': nodeSize * 1.2,
+          'height': nodeSize * 1.2,
+          'shape': 'ellipse',
+          'label': 'data(label)',
+          'text-valign': 'top',
+          'text-margin-y': -8,
+          'font-size': layoutParams ? layoutParams.labelFontSize : '11px',
+          'text-background-color': '#fff',
+          'text-background-opacity': 0.9,
+          'text-background-padding': '2px'
+        }},
+        { selector: 'node[kind="method"]', style: {
+          'display': 'element'
+        }},
+        { selector: 'edge', style: {
+          'width': 1.5,
+          'opacity': 1
+        }}
+      ];
+    }
+
+    // Apply styles for a given zoom mode
+    function applyZoomModeStyles(mode) {
+      if (!cy) return;
+
+      const modeStyles = mode === ZOOM_MODE.OVERVIEW ? getOverviewStyles()
+                       : mode === ZOOM_MODE.STRUCTURE ? getStructureStyles()
+                       : getDetailStyles();
+
+      cy.batch(() => {
+        modeStyles.forEach(({selector, style}) => {
+          cy.elements(selector).forEach(ele => {
+            Object.entries(style).forEach(([prop, val]) => {
+              if (val !== null) {
+                ele.style(prop, val);
+              } else {
+                // For auto-fit, remove the style override
+                ele.removeCss(prop);
+              }
+            });
+          });
+        });
+      });
+
+      updateZoomModeIndicator(mode);
+    }
+
+    // Update UI indicator for current zoom mode
+    function updateZoomModeIndicator(mode) {
+      const stats = document.getElementById('stats');
+      const currentText = stats.textContent;
+      // Remove any existing mode indicator
+      const baseText = currentText.replace(/ \| (overview|structure|detail)$/, '');
+      stats.textContent = `${baseText} | ${mode}`;
+    }
+
     function initCytoscape(elements) {
       if (cy) cy.destroy();
 
@@ -1025,6 +1388,29 @@
             style: {
               'border-width': 3,
               'border-color': '#f0883e'
+            }
+          },
+          // Compound nodes (parent containers)
+          {
+            selector: ':parent',
+            style: {
+              'label': 'data(label)',
+              'text-valign': 'top',
+              'text-halign': 'center',
+              'background-color': '#f6f8fa',
+              'background-opacity': 0.6,
+              'border-width': 2,
+              'border-color': '#d0d7de',
+              'border-style': 'dashed',
+              'padding': '20px',
+              'shape': 'round-rectangle',
+              'font-size': '12px',
+              'color': '#57606a',
+              'text-margin-y': -10,
+              'z-index': 0,
+              'compound-sizing-wrt-labels': 'exclude',  // Auto-fit: don't include labels in size calc
+              'min-width': '50px',
+              'min-height': '50px'
             }
           },
           // Edges
@@ -1145,23 +1531,30 @@
             }
           }
         ],
-        layout: { name: 'cose', animate: false },
-        wheelSensitivity: 0.3,
-        minZoom: 0.1,
-        maxZoom: 3
+        layout: { name: 'preset' },
+        wheelSensitivity: 0.2,  // Finer zoom control for semantic zoom
+        minZoom: 0.05,          // Allow further zoom out for overview mode
+        maxZoom: 4
       });
 
-      // Node click handler - zoom into node when in circle layout
+      // Node click handler - zoom into node when in circle layout, or toggle children
       cy.on('tap', 'node.code', (e) => {
         const node = e.target;
         showNodeInfo(node.data());
         cy.nodes().removeClass('highlighted');
         node.addClass('highlighted');
 
-        // Click-to-zoom: if in circle layout and not already zoomed, zoom into node
-        const layoutType = document.getElementById('layoutType').value;
-        if (layoutType === 'circle' && !isZoomedIn && node.degree() > 0) {
-          zoomIntoNode(node);
+        // Check if this is a parent node with hidden children
+        const isParent = node.isParent();
+        if (isParent && !showMethodsEnabled) {
+          // Click-to-expand: toggle visibility of child methods
+          toggleChildrenVisibility(node);
+        } else {
+          // Click-to-zoom: if in circle layout and not already zoomed, zoom into node
+          const layoutType = document.getElementById('layoutType').value;
+          if (layoutType === 'circle' && !isZoomedIn && node.degree() > 0) {
+            zoomIntoNode(node);
+          }
         }
       });
 
@@ -1201,6 +1594,27 @@
         if (!node.selected()) {
           node.style('label', '');
         }
+      });
+
+      // Semantic zoom event handler
+      cy.on('zoom', function() {
+        if (zoomDebounceTimer) clearTimeout(zoomDebounceTimer);
+
+        zoomDebounceTimer = setTimeout(() => {
+          const newMode = getZoomModeFromLevel(cy.zoom());
+          if (newMode !== currentZoomMode) {
+            previousZoomMode = currentZoomMode;
+            currentZoomMode = newMode;
+            console.log(`Zoom: ${previousZoomMode} -> ${currentZoomMode} (zoom level: ${cy.zoom().toFixed(2)})`);
+            applyZoomModeStyles(currentZoomMode);
+          }
+        }, ZOOM_DEBOUNCE_MS);
+      });
+
+      // Apply initial zoom mode on first render
+      cy.one('render', () => {
+        currentZoomMode = getZoomModeFromLevel(cy.zoom());
+        applyZoomModeStyles(currentZoomMode);
       });
     }
 
@@ -1243,8 +1657,73 @@
         renderGraph();
 
       } catch (err) {
-        document.getElementById('stats').textContent = 'Error: ' + err.message;
+        const errorMsg = `Cannot connect to view service at ${API}. ` +
+          `Please ensure the server is running. ` +
+          `If using a different port, add ?apiPort=XXXX to the URL.`;
+        document.getElementById('stats').textContent = 'Error: ' + errorMsg;
         console.error(err);
+        alert(errorMsg);
+      }
+    }
+
+    // Load data from a fixture file (JSON or SLB bundle)
+    async function loadFromFixture(fixturePath) {
+      if (fixturePath === 'api') {
+        // Use live API
+        return loadView();
+      }
+
+      document.getElementById('stats').textContent = 'Loading fixture...';
+
+      try {
+        const res = await fetch(fixturePath);
+        if (!res.ok) {
+          throw new Error(`Failed to load ${fixturePath}: ${res.status}`);
+        }
+        const bundle = await res.json();
+
+        // Convert bundle format to internal allData format
+        allData = {
+          elements: {
+            nodes: bundle.nodes.map(n => ({
+              data: {
+                id: n.node_id,
+                label: n.name,
+                kind: n.kind,
+                file: n.file,
+                route: n.route,
+                visibility: n.visibility,
+                parent: n.parent,
+                signature: n.signature
+              }
+            })),
+            edges: (bundle.edges || []).map(e => ({
+              data: {
+                id: e.edge_id,
+                source: e.src,
+                target: e.dst,
+                kind: e.kind,
+                confidence: e.confidence
+              }
+            }))
+          }
+        };
+
+        // Generate synthetic edges if none exist in bundle
+        if (allData.elements.edges.length === 0) {
+          allData.elements.edges = generateSyntheticEdges(allData.elements.nodes);
+        }
+
+        console.log(`Loaded fixture: ${fixturePath} - ${allData.elements.nodes.length} nodes, ${allData.elements.edges.length} edges`);
+
+        updateLegend();
+        updateFileList();
+        renderGraph();
+
+      } catch (err) {
+        document.getElementById('stats').textContent = 'Error: ' + err.message;
+        console.error('Failed to load fixture:', err);
+        alert('Failed to load fixture: ' + err.message);
       }
     }
 
@@ -1474,28 +1953,71 @@
         fileGroups[file].push(n);
       });
 
-      // Build elements - flat layout for all (compound nodes cause horizontal spread)
+      // Build elements - support compound nodes via parent field
       const elements = { nodes: [], edges: [] };
 
-      // Always use flat layout - remove parent property to prevent compound node behavior
+      // Build node ID set for orphan detection
+      const nodeIds = new Set(filteredNodes.map(n => n.data.id));
+
+      // Track which parents we've seen
+      const seenParents = new Set();
+      const parentNodes = new Map(); // id -> node data
+
+      // First pass: identify all parent nodes
       filteredNodes.forEach(n => {
-        // Create a copy of data without the 'parent' property to prevent compound nodes
-        const { parent, ...nodeData } = n.data;
-        elements.nodes.push({
-          data: nodeData,
-          classes: 'code'
-        });
+        if (n.data.parent) {
+          seenParents.add(n.data.parent);
+        }
       });
 
-      // Add edges if they reference visible nodes
-      const nodeIds = new Set(elements.nodes.map(n => n.data.id));
-      allData.elements.edges.forEach(e => {
-        if (nodeIds.has(e.data.source) && nodeIds.has(e.data.target)) {
-          elements.edges.push({
-            data: e.data,
-            classes: e.data.kind ? '' : 'relationship'
+      // Add nodes with parent relationships
+      filteredNodes.forEach(n => {
+        const hasParent = n.data.parent;
+        const parentExists = hasParent && nodeIds.has(n.data.parent);
+
+        // If node has parent reference but parent is missing, clear it to avoid Cytoscape errors
+        if (hasParent && !parentExists) {
+          console.warn(`Orphaned node ${n.data.id}: parent ${n.data.parent} not found in graph`);
+          const { parent, ...nodeData } = n.data;
+          elements.nodes.push({
+            data: nodeData,
+            classes: 'code orphaned'
+          });
+        } else {
+          // Keep parent property if parent exists
+          elements.nodes.push({
+            data: { ...n.data },
+            classes: 'code'
           });
         }
+
+        // Track if this node is a parent (for potential parent node creation)
+        if (seenParents.has(n.data.id)) {
+          parentNodes.set(n.data.id, n.data);
+        }
+      });
+
+      // Add edges if they reference visible nodes, with filtering
+      const visibleNodeIds = new Set(elements.nodes.map(n => n.data.id));
+      allData.elements.edges.forEach(e => {
+        if (!visibleNodeIds.has(e.data.source) || !visibleNodeIds.has(e.data.target)) {
+          return;  // Skip edges to/from invisible nodes
+        }
+
+        // Apply edge filtering
+        const edgeKind = e.data.kind;
+        if (edgeFilterMode === 'non-synthetic') {
+          // Exclude synthetic edges (sibling = co-location)
+          if (edgeKind === 'sibling') return;
+        } else if (edgeFilterMode === 'structural') {
+          // Only include structural edges (defines, inherits, implements)
+          if (!['defines', 'inherits', 'implements'].includes(edgeKind)) return;
+        }
+
+        elements.edges.push({
+          data: e.data,
+          classes: e.data.kind ? '' : 'relationship'
+        });
       });
 
       initCytoscape(elements);
@@ -1511,6 +2033,19 @@
 
       let layoutConfig;
       switch (layoutType) {
+        case 'elk':
+          // ELK server-side layout
+          document.getElementById('stats').textContent = 'Computing ELK layout...';
+          runElkLayout(cy).then(() => {
+            // Update stats after ELK completes
+            const visibleNodes = cy.nodes(':visible').length;
+            const visibleEdges = cy.edges(':visible').length;
+            document.getElementById('stats').textContent =
+              `${visibleNodes} nodes | ${visibleEdges} edges | ELK layout`;
+            updateEdgeLegend();
+          });
+          return;  // Skip normal layout flow
+
         case 'community':
           // Community detection layout with circular arrangement
           layoutParams = getLayoutParams();
@@ -1528,6 +2063,9 @@
           if (currentLens !== 'default') {
             applyLens(currentLens);
           }
+
+          // Apply level-of-detail (hide methods by default)
+          applyLevelOfDetail();
 
           // Update stats
           const connectedCount = cy.nodes('.code').filter(n => n.degree() > 0).length;
@@ -1570,6 +2108,9 @@
             colorByConnectivity();
           }
 
+          // Apply level-of-detail (hide methods by default)
+          applyLevelOfDetail();
+
           // Update stats for circle layout
           const fileCount = Object.keys(getFileGroups()).length;
           document.getElementById('stats').textContent =
@@ -1611,6 +2152,8 @@
         if (colorByConnectivityEnabled) {
           colorByConnectivity();
         }
+        // Apply level-of-detail (hide methods by default)
+        applyLevelOfDetail();
       });
       layout.run();
 
@@ -1741,6 +2284,18 @@
       applyLens(this.value);
     });
 
+    // Show Methods toggle handler
+    document.getElementById('showMethods').addEventListener('change', function() {
+      showMethodsEnabled = this.checked;
+      applyLevelOfDetail();
+    });
+
+    // Edge filter change handler
+    document.getElementById('edgeFilter').addEventListener('change', function() {
+      edgeFilterMode = this.value;
+      renderGraph();  // Re-render with new edge filter
+    });
+
     // Window resize handler - recalculate sizes and re-layout
     let resizeTimeout;
     window.addEventListener('resize', () => {
@@ -1764,8 +2319,18 @@
       }, 250);
     });
 
-    // Load initial view
-    loadView();
+    // Fixture selection handler
+    document.getElementById('fixtureSelect').addEventListener('change', function() {
+      loadFromFixture(this.value);
+    });
+
+    // Load initial view - use the default selected fixture
+    const initialFixture = document.getElementById('fixtureSelect').value;
+    if (initialFixture && initialFixture !== 'api') {
+      loadFromFixture(initialFixture);
+    } else {
+      loadView();
+    }
   </script>
 </body>
 </html>

@@ -5,8 +5,18 @@ The Semantic Lens view service provides a REST API for graph visualization and p
 ## Base URL
 
 ```
-http://localhost:3000
+http://localhost:3001
 ```
+
+**Port Configuration:**
+
+The server uses port 3001 by default with dynamic port checking:
+
+- **CLI flag:** `semantic-lens serve --port 8080` (highest priority)
+- **Environment variable:** `VIEW_SERVICE_PORT=8080 semantic-lens serve`
+- **Default:** Port 3001 (auto-fallback to 3002+ if unavailable)
+
+Explicit ports (CLI flag or env var) fail immediately if unavailable. The default port automatically finds the next available port if 3001 is in use.
 
 ## Endpoints
 
@@ -262,13 +272,13 @@ All endpoints return errors in this format:
 **Validate health:**
 
 ```bash
-curl http://localhost:3000/health
+curl http://localhost:3001/health
 ```
 
 **Generate a full view:**
 
 ```bash
-curl -X POST http://localhost:3000/view \
+curl -X POST http://localhost:3001/view \
   -H "Content-Type: application/json" \
   -d '{"view": "full"}'
 ```
@@ -276,7 +286,7 @@ curl -X POST http://localhost:3000/view \
 **Generate a call graph from a specific node:**
 
 ```bash
-curl -X POST http://localhost:3000/view \
+curl -X POST http://localhost:3001/view \
   -H "Content-Type: application/json" \
   -d '{
     "view": "call_graph",
@@ -289,7 +299,7 @@ curl -X POST http://localhost:3000/view \
 **Run pattern detection:**
 
 ```bash
-curl -X POST http://localhost:3000/patterns/run \
+curl -X POST http://localhost:3001/patterns/run \
   -H "Content-Type: application/json" \
   -d '{}'
 ```

@@ -140,7 +140,7 @@ OPTIONS:
     --pattern <id>            Filter by pattern ID
 
   serve:
-    --port <port>             Server port (default: 3000)
+    --port <port>             Server port (default: 3001, env: VIEW_SERVICE_PORT)
     --bundle <file>           Pre-load a bundle file
 
   export:

@@ -1,0 +1,98 @@
+{
+  "version": "v1.0",
+  "generated_at": "2026-01-02T22:00:00Z",
+  "repo": {
+    "url": "https://github.com/example/realistic-app",
+    "commit": "abc1234",
+    "branch": "main"
+  },
+  "nodes": [
+    {"node_id": "mod_app_00001", "kind": "module", "name": "app", "file": "src/app.ts", "route": "app", "span": [0, 1500], "visibility": "public", "language": "typescript"},
+    {"node_id": "cls_app_00002", "kind": "class", "name": "Application", "file": "src/app.ts", "route": "app::Application", "span": [100, 900], "visibility": "public", "language": "typescript", "parent": "mod_app_00001"},
+    {"node_id": "mtd_app_start", "kind": "method", "name": "start", "file": "src/app.ts", "route": "app::Application::start", "span": [200, 400], "visibility": "public", "language": "typescript", "parent": "cls_app_00002", "signature": "start(): void"},
+    {"node_id": "mtd_app_stop", "kind": "method", "name": "stop", "file": "src/app.ts", "route": "app::Application::stop", "span": [450, 550], "visibility": "public", "language": "typescript", "parent": "cls_app_00002", "signature": "stop(): void"},
+
+    {"node_id": "mod_server_003", "kind": "module", "name": "server", "file": "src/server/server.ts", "route": "server", "span": [0, 2400], "visibility": "public", "language": "typescript"},
+    {"node_id": "cls_server_004", "kind": "class", "name": "Server", "file": "src/server/server.ts", "route": "server::Server", "span": [300, 2100], "visibility": "public", "language": "typescript", "parent": "mod_server_003"},
+    {"node_id": "mtd_srv_listen", "kind": "method", "name": "listen", "file": "src/server/server.ts", "route": "server::Server::listen", "span": [600, 900], "visibility": "public", "language": "typescript", "parent": "cls_server_004", "signature": "listen(port: number): Promise<void>"},
+    {"node_id": "mtd_srv_close", "kind": "method", "name": "close", "file": "src/server/server.ts", "route": "server::Server::close", "span": [960, 1200], "visibility": "public", "language": "typescript", "parent": "cls_server_004", "signature": "close(): Promise<void>"},
+    {"node_id": "mtd_srv_handle", "kind": "method", "name": "handleRequest", "file": "src/server/server.ts", "route": "server::Server::handleRequest", "span": [1260, 1800], "visibility": "private", "language": "typescript", "parent": "cls_server_004", "signature": "handleRequest(req: Request): Response"},
+
+    {"node_id": "mod_router_005", "kind": "module", "name": "router", "file": "src/server/router.ts", "route": "router", "span": [0, 1800], "visibility": "public", "language": "typescript"},
+    {"node_id": "cls_router_006", "kind": "class", "name": "Router", "file": "src/server/router.ts", "route": "router::Router", "span": [150, 1500], "visibility": "public", "language": "typescript", "parent": "mod_router_005"},
+    {"node_id": "mtd_rtr_route", "kind": "method", "name": "route", "file": "src/server/router.ts", "route": "router::Router::route", "span": [300, 750], "visibility": "public", "language": "typescript", "parent": "cls_router_006", "signature": "route(path: string): Handler"},
+    {"node_id": "mtd_rtr_get", "kind": "method", "name": "get", "file": "src/server/router.ts", "route": "router::Router::get", "span": [810, 1050], "visibility": "public", "language": "typescript", "parent": "cls_router_006", "signature": "get(path: string, handler: Handler): void"},
+    {"node_id": "mtd_rtr_post", "kind": "method", "name": "post", "file": "src/server/router.ts", "route": "router::Router::post", "span": [1110, 1350], "visibility": "public", "language": "typescript", "parent": "cls_router_006", "signature": "post(path: string, handler: Handler): void"},
+
+    {"node_id": "mod_db_007000", "kind": "module", "name": "database", "file": "src/data/database.ts", "route": "database", "span": [0, 3000], "visibility": "public", "language": "typescript"},
+    {"node_id": "cls_db_008000", "kind": "class", "name": "Database", "file": "src/data/database.ts", "route": "database::Database", "span": [300, 2700], "visibility": "public", "language": "typescript", "parent": "mod_db_007000"},
+    {"node_id": "mtd_db_connect", "kind": "method", "name": "connect", "file": "src/data/database.ts", "route": "database::Database::connect", "span": [450, 750], "visibility": "public", "language": "typescript", "parent": "cls_db_008000", "signature": "connect(url: string): Promise<void>"},
+    {"node_id": "mtd_db_query", "kind": "method", "name": "query", "file": "src/data/database.ts", "route": "database::Database::query", "span": [810, 1200], "visibility": "public", "language": "typescript", "parent": "cls_db_008000", "signature": "query<T>(sql: string): Promise<T[]>"},
+    {"node_id": "mtd_db_close", "kind": "method", "name": "close", "file": "src/data/database.ts", "route": "database::Database::close", "span": [1260, 1500], "visibility": "public", "language": "typescript", "parent": "cls_db_008000", "signature": "close(): Promise<void>"},
+
+    {"node_id": "mod_usersvc_09", "kind": "module", "name": "user-service", "file": "src/services/user-service.ts", "route": "user-service", "span": [0, 2400], "visibility": "public", "language": "typescript"},
+    {"node_id": "cls_usersvc_10", "kind": "class", "name": "UserService", "file": "src/services/user-service.ts", "route": "user-service::UserService", "span": [300, 2100], "visibility": "public", "language": "typescript", "parent": "mod_usersvc_09"},
+    {"node_id": "mtd_usr_get", "kind": "method", "name": "getUser", "file": "src/services/user-service.ts", "route": "user-service::UserService::getUser", "span": [600, 900], "visibility": "public", "language": "typescript", "parent": "cls_usersvc_10", "signature": "getUser(id: string): Promise<User>"},
+    {"node_id": "mtd_usr_create", "kind": "method", "name": "createUser", "file": "src/services/user-service.ts", "route": "user-service::UserService::createUser", "span": [960, 1350], "visibility": "public", "language": "typescript", "parent": "cls_usersvc_10", "signature": "createUser(data: UserData): Promise<User>"},
+    {"node_id": "mtd_usr_delete", "kind": "method", "name": "deleteUser", "file": "src/services/user-service.ts", "route": "user-service::UserService::deleteUser", "span": [1410, 1650], "visibility": "public", "language": "typescript", "parent": "cls_usersvc_10", "signature": "deleteUser(id: string): Promise<void>"},
+
+    {"node_id": "mod_authsvc_11", "kind": "module", "name": "auth-service", "file": "src/services/auth-service.ts", "route": "auth-service", "span": [0, 2100], "visibility": "public", "language": "typescript"},
+    {"node_id": "cls_authsvc_12", "kind": "class", "name": "AuthService", "file": "src/services/auth-service.ts", "route": "auth-service::AuthService", "span": [450, 1800], "visibility": "public", "language": "typescript", "parent": "mod_authsvc_11"},
+    {"node_id": "mtd_auth_login", "kind": "method", "name": "login", "file": "src/services/auth-service.ts", "route": "auth-service::AuthService::login", "span": [450, 750], "visibility": "public", "language": "typescript", "parent": "cls_authsvc_12", "signature": "login(username: string, password: string): Promise<Token>"},
+    {"node_id": "mtd_auth_logout", "kind": "method", "name": "logout", "file": "src/services/auth-service.ts", "route": "auth-service::AuthService::logout", "span": [810, 1050], "visibility": "public", "language": "typescript", "parent": "cls_authsvc_12", "signature": "logout(token: Token): Promise<void>"},
+    {"node_id": "mtd_auth_verify", "kind": "method", "name": "verifyToken", "file": "src/services/auth-service.ts", "route": "auth-service::AuthService::verifyToken", "span": [1110, 1500], "visibility": "public", "language": "typescript", "parent": "cls_authsvc_12", "signature": "verifyToken(token: Token): Promise<boolean>"},
+
+    {"node_id": "mod_ctrl_13000", "kind": "module", "name": "user-controller", "file": "src/controllers/user-controller.ts", "route": "user-controller", "span": [0, 1800], "visibility": "public", "language": "typescript"},
+    {"node_id": "cls_ctrl_14000", "kind": "class", "name": "UserController", "file": "src/controllers/user-controller.ts", "route": "user-controller::UserController", "span": [300, 1500], "visibility": "public", "language": "typescript", "parent": "mod_ctrl_13000"},
+    {"node_id": "mtd_ctrl_get", "kind": "method", "name": "handleGet", "file": "src/controllers/user-controller.ts", "route": "user-controller::UserController::handleGet", "span": [450, 750], "visibility": "public", "language": "typescript", "parent": "cls_ctrl_14000", "signature": "handleGet(req: Request): Promise<Response>"},
+    {"node_id": "mtd_ctrl_post", "kind": "method", "name": "handlePost", "file": "src/controllers/user-controller.ts", "route": "user-controller::UserController::handlePost", "span": [810, 1200], "visibility": "public", "language": "typescript", "parent": "cls_ctrl_14000", "signature": "handlePost(req: Request): Promise<Response>"},
+
+    {"node_id": "int_user_15000", "kind": "interface", "name": "User", "file": "src/models/user.ts", "route": "models::User", "span": [0, 300], "visibility": "public", "language": "typescript"},
+    {"node_id": "int_token_16000", "kind": "interface", "name": "Token", "file": "src/models/token.ts", "route": "models::Token", "span": [0, 150], "visibility": "public", "language": "typescript"},
+
+    {"node_id": "func_hash_17000", "kind": "function", "name": "hashPassword", "file": "src/utils/crypto.ts", "route": "utils::hashPassword", "span": [150, 300], "visibility": "public", "language": "typescript", "signature": "hashPassword(password: string): string"},
+    {"node_id": "func_valid_18000", "kind": "function", "name": "validateEmail", "file": "src/utils/validation.ts", "route": "utils::validateEmail", "span": [90, 240], "visibility": "public", "language": "typescript", "signature": "validateEmail(email: string): boolean"}
+  ],
+  "edges": [
+    {"edge_id": "edge_e1_00001", "kind": "calls", "src": "mtd_app_start", "dst": "mtd_srv_listen", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e2_00002", "kind": "calls", "src": "mtd_app_stop", "dst": "mtd_srv_close", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e3_00003", "kind": "calls", "src": "mtd_srv_handle", "dst": "mtd_rtr_route", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e4_00004", "kind": "calls", "src": "mtd_rtr_route", "dst": "mtd_ctrl_get", "confidence": 0.9, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e5_00005", "kind": "calls", "src": "mtd_ctrl_get", "dst": "mtd_usr_get", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e6_00006", "kind": "calls", "src": "mtd_ctrl_post", "dst": "mtd_usr_create", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e7_00007", "kind": "calls", "src": "mtd_usr_get", "dst": "mtd_db_query", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e8_00008", "kind": "calls", "src": "mtd_usr_create", "dst": "mtd_db_query", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e9_00009", "kind": "calls", "src": "mtd_usr_delete", "dst": "mtd_db_query", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e10_0010", "kind": "calls", "src": "mtd_auth_login", "dst": "mtd_usr_get", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e11_0011", "kind": "calls", "src": "mtd_auth_login", "dst": "func_hash_17000", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e12_0012", "kind": "calls", "src": "mtd_usr_create", "dst": "func_valid_18000", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e13_0013", "kind": "calls", "src": "mtd_usr_create", "dst": "func_hash_17000", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e14_0014", "kind": "uses", "src": "cls_usersvc_10", "dst": "int_user_15000", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e15_0015", "kind": "uses", "src": "cls_authsvc_12", "dst": "int_token_16000", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e16_0016", "kind": "uses", "src": "cls_authsvc_12", "dst": "int_user_15000", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e17_0017", "kind": "defines", "src": "mod_app_00001", "dst": "cls_app_00002", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e18_0018", "kind": "defines", "src": "mod_server_003", "dst": "cls_server_004", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e19_0019", "kind": "defines", "src": "mod_router_005", "dst": "cls_router_006", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e20_0020", "kind": "defines", "src": "mod_db_007000", "dst": "cls_db_008000", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e21_0021", "kind": "defines", "src": "cls_app_00002", "dst": "mtd_app_start", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e22_0022", "kind": "defines", "src": "cls_app_00002", "dst": "mtd_app_stop", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e23_0023", "kind": "defines", "src": "cls_server_004", "dst": "mtd_srv_listen", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e24_0024", "kind": "defines", "src": "cls_server_004", "dst": "mtd_srv_close", "confidence": 1.0, "evidence": ["static_analysis"]},
+    {"edge_id": "edge_e25_0025", "kind": "defines", "src": "cls_server_004", "dst": "mtd_srv_handle", "confidence": 1.0, "evidence": ["static_analysis"]}
+  ],
+  "annotations": [
+    {
+      "target_id": "cls_app_00002",
+      "tags": ["entry-point", "core"]
+    },
+    {
+      "target_id": "cls_usersvc_10",
+      "tags": ["service", "user-management"]
+    },
+    {
+      "target_id": "cls_authsvc_12",
+      "tags": ["service", "security"]
+    }
+  ],
+  "patterns": []
+}
