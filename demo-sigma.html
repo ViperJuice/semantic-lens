@@ -1,0 +1,1925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Semantic Lens - Sigma.js Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      overflow: hidden;
+    }
+
+    #container {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    #sidebar {
+      width: 300px;
+      min-width: 300px;
+      background: #252542;
+      border-right: 1px solid #3a3a5c;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid #3a3a5c;
+    }
+
+    #sidebar-header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    #sidebar-header p {
+      font-size: 12px;
+      color: #888;
+    }
+
+    #sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #888;
+      margin-bottom: 12px;
+    }
+
+    .control-group {
+      margin-bottom: 16px;
+    }
+
+    .control-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .file-input-label {
+      display: block;
+      padding: 10px 16px;
+      background: #3a3a5c;
+      border-radius: 6px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-size: 13px;
+    }
+
+    .file-input-label:hover {
+      background: #4a4a6c;
+    }
+
+    .control-select {
+      width: 100%;
+      padding: 10px 12px;
+      background: #3a3a5c;
+      border: none;
+      border-radius: 6px;
+      color: #e0e0e0;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .control-select:hover {
+      background: #4a4a6c;
+    }
+
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .radio-option:hover {
+      background: #3a3a5c;
+    }
+
+    .radio-option input[type="radio"] {
+      accent-color: #00bcd4;
+    }
+
+    .radio-option span {
+      font-size: 13px;
+    }
+
+    .checkbox-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding: 6px 0;
+    }
+
+    .checkbox-option input[type="checkbox"] {
+      accent-color: #00bcd4;
+      width: 16px;
+      height: 16px;
+    }
+
+    .checkbox-option span {
+      font-size: 13px;
+    }
+
+    .stats {
+      background: #1a1a2e;
+      border-radius: 6px;
+      padding: 12px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 4px 0;
+    }
+
+    .stat-label {
+      color: #888;
+    }
+
+    .stat-value {
+      font-weight: 500;
+      color: #fff;
+    }
+
+    .lod-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #1a1a2e;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    .lod-indicator .label {
+      font-size: 11px;
+      color: #888;
+      text-transform: uppercase;
+    }
+
+    .lod-indicator .value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #00bcd4;
+    }
+
+    .selection-info {
+      background: #1a1a2e;
+      border-radius: 6px;
+      padding: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .selection-item {
+      font-size: 12px;
+      padding: 4px 0;
+      border-bottom: 1px solid #3a3a5c;
+    }
+
+    .selection-item:last-child {
+      border-bottom: none;
+    }
+
+    .selection-item .name {
+      font-weight: 500;
+      color: #fff;
+    }
+
+    .selection-item .kind {
+      color: #888;
+      margin-left: 4px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      background: #3a3a5c;
+      border: none;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #4a4a6c;
+    }
+
+    .btn-primary {
+      background: #00bcd4;
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      background: #26c6da;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    #graph-container {
+      flex: 1;
+      position: relative;
+      background: #1a1a2e;
+    }
+
+    #graph {
+      width: 100%;
+      height: 100%;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: #888;
+    }
+
+    #loading.hidden {
+      display: none;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #3a3a5c;
+      border-top-color: #00bcd4;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #333;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 6px;
+      font-size: 13px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+
+    /* Repository list styles */
+    .repo-list {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #3a3a5c;
+      border-radius: 4px;
+      padding: 8px;
+      background: rgba(26, 26, 46, 0.5);
+    }
+
+    .repo-list-info {
+      color: #888;
+      font-size: 12px;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .repo-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 4px;
+      border-bottom: 1px solid rgba(58, 58, 92, 0.3);
+      font-size: 12px;
+    }
+
+    .repo-item:last-child {
+      border-bottom: none;
+    }
+
+    .repo-item input[type="checkbox"] {
+      margin-right: 8px;
+      cursor: pointer;
+    }
+
+    .repo-item label {
+      flex: 1;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .repo-item.has-fixture label {
+      color: #00bcd4;
+    }
+
+    .repo-item.no-fixture label {
+      color: #888;
+    }
+
+    .repo-item .fixture-status {
+      font-size: 10px;
+      margin-left: 8px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: rgba(58, 58, 92, 0.5);
+    }
+
+    .repo-item .fixture-status.has {
+      background: rgba(0, 188, 212, 0.2);
+      color: #00bcd4;
+    }
+
+    .repo-item .fixture-status.missing {
+      background: rgba(136, 136, 136, 0.2);
+      color: #888;
+    }
+
+    .toast.visible {
+      opacity: 1;
+    }
+
+    /* Community background layer */
+    #community-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      filter: blur(6px);  /* Sharper edges for clarity */
+      opacity: 0.5;  /* Lighter backgrounds */
+    }
+
+    /* Community label layer */
+    #community-label-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+
+    /* Node tooltip */
+    .node-tooltip {
+      position: absolute;
+      background: rgba(40, 40, 60, 0.95);
+      color: #ffffff;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      font-family: 'Inter', system-ui, sans-serif;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 1001;
+      white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .node-tooltip.visible {
+      opacity: 1;
+    }
+
+    /* Hide Sigma's default canvas hover rendering */
+    .sigma-hover,
+    canvas[data-sigma-hover] {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+    }
+
+    /* Edge tooltip */
+    .edge-tooltip {
+      position: absolute;
+      background: rgba(40, 40, 60, 0.95);
+      color: #e0e0e0;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 1000;
+    }
+
+    .edge-tooltip.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="sidebar">
+      <div id="sidebar-header">
+        <h1>Semantic Lens</h1>
+        <p>Sigma.js Graph Viewer</p>
+      </div>
+      <div id="sidebar-content">
+        <!-- Data Source -->
+        <div class="section">
+          <div class="section-title">Data Source</div>
+          <div class="control-group">
+            <input type="file" id="file-input" accept=".json,.slb">
+            <label for="file-input" class="file-input-label">
+              Load Bundle File (.slb, .json)
+            </label>
+          </div>
+          <div class="control-group">
+            <button class="btn" id="load-api-btn" style="width: 100%">
+              Load from API (localhost:3001)
+            </button>
+          </div>
+          <div class="control-group">
+            <select id="fixture-select" class="control-select">
+              <option value="">-- Load Fixture --</option>
+              <option value="semantic-lens-v4.slb">semantic-lens (current)</option>
+              <option value="navblue-extension.slb">navblue-extension</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Repository Sources -->
+        <div class="section">
+          <div class="section-title">Repository Sources</div>
+          <div class="control-group">
+            <button class="btn" id="refresh-manifest-btn" style="width: 100%">
+              Refresh Repo List
+            </button>
+          </div>
+          <div class="control-group">
+            <div id="repo-list" class="repo-list">
+              <div class="repo-list-info">Loading repositories...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LOD Indicator -->
+        <div class="section">
+          <div class="section-title">Zoom Level</div>
+          <div class="lod-indicator">
+            <span class="label">LOD:</span>
+            <span class="value" id="lod-value">overview</span>
+          </div>
+        </div>
+
+        <!-- Edge Mode -->
+        <div class="section">
+          <div class="section-title">Edge Visibility</div>
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" name="edge-mode" value="selection" checked>
+              <span>Selection Only (default)</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="edge-mode" value="all">
+              <span>Show All</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="edge-mode" value="none">
+              <span>Hide All</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Community Visualization -->
+        <div class="section">
+          <div class="section-title">Community Visualization</div>
+          <label class="checkbox-option">
+            <input type="checkbox" id="show-community-bg" checked>
+            <span>Show Community Backgrounds</span>
+          </label>
+          <label class="checkbox-option">
+            <input type="checkbox" id="show-community-labels" checked>
+            <span>Show Community Labels</span>
+          </label>
+        </div>
+
+        <!-- Label Visibility -->
+        <div class="section">
+          <div class="section-title">Labels</div>
+          <label class="checkbox-option">
+            <input type="checkbox" id="show-node-labels" checked>
+            <span>Show Node Labels</span>
+          </label>
+          <label class="checkbox-option">
+            <input type="checkbox" id="show-edge-labels">
+            <span>Show Edge Labels</span>
+          </label>
+        </div>
+
+        <!-- Filters -->
+        <div class="section">
+          <div class="section-title">Filters</div>
+          <label class="checkbox-option">
+            <input type="checkbox" id="show-isolates" checked>
+            <span>Show Isolates</span>
+          </label>
+          <label class="checkbox-option">
+            <input type="checkbox" id="hide-external-edges">
+            <span>Hide Cross-Cluster Edges</span>
+          </label>
+        </div>
+
+        <!-- Actions -->
+        <div class="section">
+          <div class="section-title">Actions</div>
+          <div class="btn-group" style="flex-wrap: wrap;">
+            <button class="btn" id="fit-btn">Fit</button>
+            <button class="btn" id="clear-selection-btn">Clear Selection</button>
+            <button class="btn" id="snapshot-btn">Snapshot</button>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="section">
+          <div class="section-title">Statistics</div>
+          <div class="stats">
+            <div class="stat-row">
+              <span class="stat-label">Nodes:</span>
+              <span class="stat-value" id="stat-nodes">0</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Edges:</span>
+              <span class="stat-value" id="stat-edges">0</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Isolates:</span>
+              <span class="stat-value" id="stat-isolates">0</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Communities:</span>
+              <span class="stat-value" id="stat-communities">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selection -->
+        <div class="section">
+          <div class="section-title">Selection (<span id="selection-count">0</span>)</div>
+          <div class="selection-info" id="selection-info">
+            <div style="color: #666; font-size: 12px;">Click nodes to select</div>
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="section">
+          <div class="section-title">Legend</div>
+          <div class="legend" id="legend">
+            <div class="legend-item">
+              <div class="legend-color" style="background: #9b59b6"></div>
+              <span>module</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #3498db"></div>
+              <span>class</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #e67e22"></div>
+              <span>interface</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #e74c3c"></div>
+              <span>trait</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #2ecc71"></div>
+              <span>function</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #00bcd4"></div>
+              <span>method</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #f1c40f"></div>
+              <span>field</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #95a5a6"></div>
+              <span>property</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="graph-container">
+      <div id="graph"></div>
+      <div id="loading">
+        <div class="spinner"></div>
+        <p>Loading graph...</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- Dependencies from CDN (using unpkg for reliability) -->
+  <script src="https://unpkg.com/graphology@0.25.4/dist/graphology.umd.min.js"></script>
+  <script src="https://unpkg.com/graphology-layout-forceatlas2@0.10.1/build/graphology-layout-forceatlas2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/graphology-library@0.8.0/dist/graphology-library.min.js"></script>
+  <script src="https://unpkg.com/sigma@2.4.0/build/sigma.min.js"></script>
+
+  <script>
+    // ============================================
+    // Global State
+    // ============================================
+    let viewer = null;
+    let graph = null;
+    let isolates = new Set();
+    let state = {
+      lod: 'overview',
+      edgeMode: 'selection',
+      selectedNodes: new Set(),
+      hiddenNodes: new Set(),
+      deletedNodes: new Set(),
+      showIsolates: true,
+      hideExternalEdges: false,
+      showNodeLabels: true,
+      showEdgeLabels: false,
+      showCommunityLabels: true,
+      showCommunityBackgrounds: true,
+    };
+
+    // Color palette
+    const KIND_COLORS = {
+      module: '#9b59b6',
+      class: '#3498db',
+      interface: '#e67e22',
+      trait: '#e74c3c',
+      function: '#2ecc71',
+      method: '#00bcd4',
+      field: '#f1c40f',
+      property: '#95a5a6',
+    };
+
+    // ============================================
+    // Utility Functions
+    // ============================================
+    function showToast(message, duration = 3000) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('visible');
+      setTimeout(() => toast.classList.remove('visible'), duration);
+    }
+
+    function setLoading(loading) {
+      document.getElementById('loading').classList.toggle('hidden', !loading);
+    }
+
+    function getLODFromZoom(ratio) {
+      if (ratio > 2.0) return 'overview';
+      if (ratio > 0.5) return 'structure';
+      return 'detail';
+    }
+
+    function updateStats() {
+      if (!graph) return;
+
+      let communities = new Set();
+      graph.forEachNode((node, attrs) => {
+        if (attrs.community !== undefined) {
+          communities.add(attrs.community);
+        }
+      });
+
+      document.getElementById('stat-nodes').textContent = graph.order;
+      document.getElementById('stat-edges').textContent = graph.size;
+      document.getElementById('stat-isolates').textContent = isolates.size;
+      document.getElementById('stat-communities').textContent = communities.size;
+    }
+
+    function updateSelectionUI() {
+      const selected = Array.from(state.selectedNodes);
+      document.getElementById('selection-count').textContent = selected.length;
+
+      const container = document.getElementById('selection-info');
+      if (selected.length === 0) {
+        container.innerHTML = '<div style="color: #666; font-size: 12px;">Click nodes to select</div>';
+        return;
+      }
+
+      let html = '';
+      for (const nodeId of selected.slice(0, 20)) {
+        if (graph.hasNode(nodeId)) {
+          const attrs = graph.getNodeAttributes(nodeId);
+          html += `<div class="selection-item">
+            <span class="name">${attrs.label}</span>
+            <span class="kind">(${attrs.kind})</span>
+          </div>`;
+        }
+      }
+      if (selected.length > 20) {
+        html += `<div class="selection-item" style="color: #666;">...and ${selected.length - 20} more</div>`;
+      }
+      container.innerHTML = html;
+    }
+
+    // ============================================
+    // Manifest & Repository Management
+    // ============================================
+    let repoManifest = null;
+
+    /**
+     * Loads the repository manifest from fixtures/manifest.json
+     */
+    async function loadManifest() {
+      try {
+        const response = await fetch('/fixtures/manifest.json');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        repoManifest = await response.json();
+        return repoManifest;
+      } catch (error) {
+        console.error('Failed to load manifest:', error);
+        return null;
+      }
+    }
+
+    /**
+     * Gets repo selections from localStorage
+     */
+    function getRepoSelections() {
+      const stored = localStorage.getItem('semantic-lens-repo-selections');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch {
+          return {};
+        }
+      }
+      return {};
+    }
+
+    /**
+     * Saves repo selections to localStorage
+     */
+    function saveRepoSelections(selections) {
+      localStorage.setItem('semantic-lens-repo-selections', JSON.stringify(selections));
+    }
+
+    /**
+     * Renders the repository list with checkboxes
+     */
+    function renderRepoList(manifest) {
+      const container = document.getElementById('repo-list');
+
+      if (!manifest || !manifest.repos || manifest.repos.length === 0) {
+        container.innerHTML = '<div class="repo-list-info">No repositories found</div>';
+        return;
+      }
+
+      const selections = getRepoSelections();
+      let html = '';
+
+      manifest.repos.forEach((repo) => {
+        const isChecked = selections[repo.name] !== false; // Default to true
+        const hasFixture = repo.hasFixture;
+        const itemClass = hasFixture ? 'has-fixture' : 'no-fixture';
+        const statusClass = hasFixture ? 'has' : 'missing';
+        const statusText = hasFixture ? '✓' : '−';
+
+        html += `
+          <div class="repo-item ${itemClass}">
+            <input
+              type="checkbox"
+              id="repo-${repo.name}"
+              data-repo="${repo.name}"
+              ${isChecked ? 'checked' : ''}
+              ${!hasFixture ? 'disabled' : ''}
+            >
+            <label for="repo-${repo.name}">${repo.name}</label>
+            <span class="fixture-status ${statusClass}">${statusText}</span>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+
+      // Add event listeners to checkboxes
+      container.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+        checkbox.addEventListener('change', (e) => {
+          const repoName = e.target.dataset.repo;
+          const selections = getRepoSelections();
+          selections[repoName] = e.target.checked;
+          saveRepoSelections(selections);
+          updateFixtureDropdown();
+        });
+      });
+
+      updateFixtureDropdown();
+    }
+
+    /**
+     * Updates the fixture dropdown based on enabled repos
+     */
+    function updateFixtureDropdown() {
+      if (!repoManifest) return;
+
+      const select = document.getElementById('fixture-select');
+      const selections = getRepoSelections();
+
+      // Clear existing options except the first placeholder
+      select.innerHTML = '<option value="">-- Load Fixture --</option>';
+
+      // Add enabled repos with fixtures
+      repoManifest.repos.forEach((repo) => {
+        const isEnabled = selections[repo.name] !== false;
+        if (repo.hasFixture && isEnabled) {
+          const option = document.createElement('option');
+          option.value = `${repo.name}.slb`;
+          option.textContent = repo.name;
+          select.appendChild(option);
+        }
+      });
+    }
+
+    /**
+     * Refreshes the manifest and repo list
+     */
+    async function refreshManifest() {
+      const manifest = await loadManifest();
+      if (manifest) {
+        renderRepoList(manifest);
+        showToast(`Loaded ${manifest.repos.length} repositories`, 2000);
+      } else {
+        showToast('Failed to load repository manifest', 3000);
+      }
+    }
+
+    // ============================================
+    // Graph Building
+    // ============================================
+    function buildGraph(bundle) {
+      const g = new graphology.Graph({ multi: true, type: 'directed' });
+      const nodeIds = new Set();
+
+      // Add nodes
+      for (const node of bundle.nodes) {
+        // Skip duplicate nodes
+        if (nodeIds.has(node.node_id)) {
+          continue;
+        }
+        nodeIds.add(node.node_id);
+        g.addNode(node.node_id, {
+          label: node.name,
+          kind: node.kind,
+          file: node.file || '',
+          parent: node.parent,
+          route: node.route,
+          color: KIND_COLORS[node.kind] || '#666666',
+          size: 5,
+          x: Math.random() * 1000,
+          y: Math.random() * 1000,
+        });
+      }
+
+      // Add edges
+      for (const edge of bundle.edges) {
+        if (nodeIds.has(edge.src) && nodeIds.has(edge.dst)) {
+          g.addEdge(edge.src, edge.dst, {
+            id: edge.edge_id,
+            kind: edge.kind,
+            confidence: edge.confidence || 1.0,
+          });
+        }
+      }
+
+      // Identify isolates
+      isolates = new Set();
+      g.forEachNode((nodeId) => {
+        if (g.degree(nodeId) === 0) {
+          isolates.add(nodeId);
+          g.setNodeAttribute(nodeId, 'isolate', true);
+        }
+      });
+
+      return g;
+    }
+
+    /**
+     * Positions isolate nodes in a ring around the main graph.
+     */
+    function positionIsolateRing(graph, isolates) {
+      // Get bounding box of non-isolate nodes
+      let minX = Infinity, maxX = -Infinity;
+      let minY = Infinity, maxY = -Infinity;
+
+      graph.forEachNode((nodeId, attrs) => {
+        if (!isolates.has(nodeId)) {
+          minX = Math.min(minX, attrs.x);
+          maxX = Math.max(maxX, attrs.x);
+          minY = Math.min(minY, attrs.y);
+          maxY = Math.max(maxY, attrs.y);
+        }
+      });
+
+      // Handle case where all nodes are isolates
+      if (!isFinite(minX)) {
+        minX = 0; maxX = 1000;
+        minY = 0; maxY = 1000;
+      }
+
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+      const radius = Math.max(maxX - minX, maxY - minY) * 0.6 + 200;
+
+      // Sort for deterministic positioning
+      const isolateArray = Array.from(isolates).sort();
+
+      isolateArray.forEach((nodeId, i) => {
+        const angle = (2 * Math.PI * i) / isolateArray.length - Math.PI / 2;
+        graph.setNodeAttribute(nodeId, 'x', centerX + radius * Math.cos(angle));
+        graph.setNodeAttribute(nodeId, 'y', centerY + radius * Math.sin(angle));
+      });
+    }
+
+    /**
+     * Applies ForceAtlas2 layout to spread communities apart.
+     * Non-isolate nodes are positioned using force-directed layout.
+     * Isolates remain in their ring formation.
+     */
+    function applyLayout(graph, isolates, iterations = 200) {
+      // Position isolates in ring (before layout)
+      positionIsolateRing(graph, isolates);
+
+      // Run ForceAtlas2 on non-isolate nodes
+      const settings = graphologyLibrary.layoutForceAtlas2.inferSettings(graph);
+      graphologyLibrary.layoutForceAtlas2.assign(graph, {
+        iterations,
+        settings: {
+          ...settings,
+          gravity: 0.05,  // Lower gravity = communities spread out more from center
+          scalingRatio: 5,  // Tight communities internally
+          barnesHutOptimize: true,
+        },
+      });
+
+      // Reposition isolates after layout (to avoid being pulled in)
+      positionIsolateRing(graph, isolates);
+    }
+
+    // ============================================
+    // Community Detection
+    // ============================================
+    function detectCommunities() {
+      if (!graph) return;
+
+      console.log('[Community Detection] Starting Louvain algorithm...');
+
+      try {
+        if (window.graphologyLibrary?.communitiesLouvain) {
+          window.graphologyLibrary.communitiesLouvain.assign(graph);
+
+          // Count communities for verification
+          const communities = new Set();
+          graph.forEachNode((node, attrs) => {
+            if (attrs.community !== undefined) {
+              communities.add(attrs.community);
+            }
+          });
+
+          console.log(`[Community Detection] ✓ Found ${communities.size} communities`);
+        } else {
+          console.error('[Community Detection] ✗ graphologyLibrary.communitiesLouvain not available');
+          console.error('Available globals:', Object.keys(window).filter(k => k.includes('graph')));
+        }
+      } catch (err) {
+        console.error('[Community Detection] ✗ Failed:', err);
+        showToast('Community detection failed: ' + err.message, 5000);
+      }
+    }
+
+    // ============================================
+    // Community Visualization
+    // ============================================
+
+    /**
+     * Gets a color for a community based on its ID.
+     */
+    function getCommunityColor(communityId) {
+      const colors = [
+        '#9b59b6', '#3498db', '#2ecc71', '#e74c3c', '#f1c40f',
+        '#1abc9c', '#e67e22', '#95a5a6', '#d35400', '#8e44ad',
+      ];
+      return colors[communityId % colors.length];
+    }
+
+    /**
+     * Extracts community data from the graph (nodes, bounds, centroids).
+     */
+    function getCommunityData() {
+      if (!graph) return new Map();
+
+      const communities = new Map();
+
+      graph.forEachNode((nodeId, attrs) => {
+        const community = attrs.community;
+        if (community === undefined) return;
+
+        if (!communities.has(community)) {
+          communities.set(community, {
+            id: community,
+            nodes: [],
+            minX: Infinity,
+            maxX: -Infinity,
+            minY: Infinity,
+            maxY: -Infinity,
+          });
+        }
+
+        const comm = communities.get(community);
+        comm.nodes.push({ id: nodeId, x: attrs.x, y: attrs.y });
+        comm.minX = Math.min(comm.minX, attrs.x);
+        comm.maxX = Math.max(comm.maxX, attrs.x);
+        comm.minY = Math.min(comm.minY, attrs.y);
+        comm.maxY = Math.max(comm.maxY, attrs.y);
+      });
+
+      // Calculate centroids
+      communities.forEach((comm) => {
+        const sumX = comm.nodes.reduce((sum, n) => sum + n.x, 0);
+        const sumY = comm.nodes.reduce((sum, n) => sum + n.y, 0);
+        comm.centroid = {
+          x: sumX / comm.nodes.length,
+          y: sumY / comm.nodes.length,
+        };
+      });
+
+      return communities;
+    }
+
+    /**
+     * Renders community backgrounds as glowing cosmic blobs.
+     */
+    function renderCommunityBackgrounds() {
+      if (!viewer || !state.showCommunityBackgrounds) {
+        const existing = document.getElementById('community-layer');
+        if (existing) existing.style.display = 'none';
+        return;
+      }
+
+      const container = viewer.getContainer();
+      let canvas = document.getElementById('community-layer');
+
+      if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'community-layer';
+        container.insertBefore(canvas, container.firstChild);
+      }
+
+      canvas.style.display = 'block';
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const communities = getCommunityData();
+
+      communities.forEach((comm) => {
+        const points = comm.nodes.map(node =>
+          viewer.graphToViewport({ x: node.x, y: node.y })
+        );
+
+        if (points.length < 2) return;
+
+        // Calculate center and radius
+        const center = points.reduce(
+          (acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }),
+          { x: 0, y: 0 }
+        );
+        center.x /= points.length;
+        center.y /= points.length;
+
+        const maxRadius = Math.max(
+          ...points.map(p =>
+            Math.sqrt((p.x - center.x) ** 2 + (p.y - center.y) ** 2)
+          )
+        );
+
+        const radius = maxRadius + 15;  // Tighter boundaries
+
+        // Render with radial gradient for cosmic effect
+        const gradient = ctx.createRadialGradient(
+          center.x, center.y, 0,
+          center.x, center.y, radius
+        );
+
+        const color = getCommunityColor(comm.id);
+        gradient.addColorStop(0, color + 'AA');    // 67% opacity at center
+        gradient.addColorStop(0.7, color + '44');  // 27% opacity at 70% radius
+        gradient.addColorStop(1, color + '00');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    /**
+     * Renders community labels showing community ID and node count.
+     */
+    function renderCommunityLabels() {
+      if (!viewer || !state.showCommunityLabels) {
+        const existing = document.getElementById('community-label-layer');
+        if (existing) existing.style.display = 'none';
+        return;
+      }
+
+      const container = viewer.getContainer();
+      let canvas = document.getElementById('community-label-layer');
+
+      if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'community-label-layer';
+        canvas.style.position = 'absolute';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.pointerEvents = 'none';
+        container.appendChild(canvas);
+      }
+
+      canvas.style.display = 'block';
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const communities = getCommunityData();
+      const zoom = viewer.getCamera().getState().ratio;
+
+      if (zoom > 1.5) return; // Only show at appropriate zoom
+
+      communities.forEach((comm) => {
+        if (comm.nodes.length < 3) return;
+
+        const pos = viewer.graphToViewport(comm.centroid);
+        const fontSize = Math.min(24, 12 + comm.nodes.length / 2);
+
+        ctx.font = `600 ${fontSize}px Inter, sans-serif`;
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const label = `C${comm.id} (${comm.nodes.length})`;
+        ctx.strokeText(label, pos.x, pos.y);
+        ctx.fillText(label, pos.x, pos.y);
+      });
+    }
+
+    /**
+     * Shows the node tooltip with node information.
+     */
+    function showNodeTooltip(nodeId) {
+      const tooltip = document.getElementById('node-tooltip');
+      const attrs = graph.getNodeAttributes(nodeId);
+      tooltip.textContent = attrs.label || nodeId;
+      tooltip.classList.add('visible');
+    }
+
+    /**
+     * Hides the node tooltip.
+     */
+    function hideNodeTooltip() {
+      document.getElementById('node-tooltip').classList.remove('visible');
+    }
+
+    /**
+     * Updates the node tooltip position to follow the mouse.
+     */
+    function updateNodeTooltipPosition(event) {
+      const tooltip = document.getElementById('node-tooltip');
+      tooltip.style.left = (event.clientX + 15) + 'px';
+      tooltip.style.top = (event.clientY - 40) + 'px';  // Position above cursor
+    }
+
+    /**
+     * Shows the edge tooltip with edge information.
+     */
+    function showEdgeTooltip(data) {
+      const tooltip = document.getElementById('edge-tooltip');
+      tooltip.querySelector('.kind').textContent = data.kind;
+      tooltip.querySelector('.path').textContent = `${data.from} → ${data.to}`;
+      tooltip.querySelector('.confidence').textContent =
+        `Confidence: ${(data.confidence * 100).toFixed(0)}%`;
+      tooltip.classList.add('visible');
+    }
+
+    /**
+     * Hides the edge tooltip.
+     */
+    function hideEdgeTooltip() {
+      document.getElementById('edge-tooltip').classList.remove('visible');
+    }
+
+    /**
+     * Updates the edge tooltip position to follow the mouse.
+     */
+    function updateEdgeTooltipPosition(event) {
+      const tooltip = document.getElementById('edge-tooltip');
+      tooltip.style.left = (event.clientX + 15) + 'px';
+      tooltip.style.top = (event.clientY + 15) + 'px';
+    }
+
+    // ============================================
+    // Isolate Ring Positioning
+    // ============================================
+    function positionIsolateRing() {
+      if (!graph || isolates.size === 0) return;
+
+      // Get bounding box of non-isolate nodes
+      let minX = Infinity, maxX = -Infinity;
+      let minY = Infinity, maxY = -Infinity;
+
+      graph.forEachNode((nodeId, attrs) => {
+        if (!isolates.has(nodeId)) {
+          minX = Math.min(minX, attrs.x);
+          maxX = Math.max(maxX, attrs.x);
+          minY = Math.min(minY, attrs.y);
+          maxY = Math.max(maxY, attrs.y);
+        }
+      });
+
+      if (!isFinite(minX)) {
+        minX = 0; maxX = 1000;
+        minY = 0; maxY = 1000;
+      }
+
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+      const radius = Math.max(maxX - minX, maxY - minY) * 0.6 + 200;
+
+      // Sort isolates for deterministic positioning
+      const isolateArray = Array.from(isolates).sort();
+
+      isolateArray.forEach((nodeId, i) => {
+        const angle = (2 * Math.PI * i) / isolateArray.length - Math.PI / 2;
+        graph.setNodeAttribute(nodeId, 'x', centerX + radius * Math.cos(angle));
+        graph.setNodeAttribute(nodeId, 'y', centerY + radius * Math.sin(angle));
+      });
+    }
+
+    // ============================================
+    // Layout
+    // ============================================
+    function runLayout(iterations = 100) {
+      if (!graph) return;
+
+      // Mark isolates as fixed
+      graph.forEachNode((nodeId) => {
+        graph.setNodeAttribute(nodeId, 'fixed', isolates.has(nodeId));
+      });
+
+      const FA2 = window.graphologyLayoutForceAtlas2 || window.ForceAtlas2 || {};
+      const settings = FA2.inferSettings ? FA2.inferSettings(graph) : {};
+      if (FA2.assign) {
+        FA2.assign(graph, {
+          iterations,
+          settings: {
+            ...settings,
+            gravity: 1,
+            scalingRatio: 10,
+            barnesHutOptimize: true,
+          },
+        });
+      }
+
+      positionIsolateRing();
+    }
+
+    // ============================================
+    // Projection
+    // ============================================
+    function applyProjection() {
+      if (!graph || !viewer) return;
+
+      graph.forEachNode((nodeId, attrs) => {
+        let hidden = false;
+
+        // Deleted nodes
+        if (state.deletedNodes.has(nodeId)) hidden = true;
+        // Hidden nodes
+        else if (state.hiddenNodes.has(nodeId)) hidden = true;
+        // Isolates
+        else if (attrs.isolate && !state.showIsolates) hidden = true;
+
+        graph.setNodeAttribute(nodeId, 'hidden', hidden);
+      });
+
+      graph.forEachEdge((edgeKey, attrs, src, dst) => {
+        const srcAttrs = graph.getNodeAttributes(src);
+        const dstAttrs = graph.getNodeAttributes(dst);
+
+        let hidden = false;
+
+        // Both endpoints must be visible
+        if (srcAttrs.hidden || dstAttrs.hidden) {
+          hidden = true;
+        }
+        // Edge mode
+        else if (state.edgeMode === 'none') {
+          hidden = true;
+        }
+        else if (state.edgeMode === 'selection') {
+          if (!state.selectedNodes.has(src) && !state.selectedNodes.has(dst)) {
+            hidden = true;
+          }
+        }
+        // External edge filter
+        if (!hidden && state.hideExternalEdges) {
+          if (srcAttrs.community !== dstAttrs.community) {
+            hidden = true;
+          }
+        }
+
+        graph.setEdgeAttribute(edgeKey, 'hidden', hidden);
+      });
+
+      viewer.refresh();
+    }
+
+    // ============================================
+    // Viewer Initialization
+    // ============================================
+    function initViewer(bundle) {
+      setLoading(true);
+
+      try {
+        // Validate libraries loaded
+        if (!window.graphology?.Graph) {
+          throw new Error('Graphology library not loaded');
+        }
+
+        // Build graph
+        graph = buildGraph(bundle);
+
+      // Detect communities
+      detectCommunities();
+
+      // Run layout with ForceAtlas2 to spread communities apart
+      applyLayout(graph, isolates, 200);
+
+      // Clean up old viewer
+      if (viewer) {
+        viewer.kill();
+      }
+
+      // Reset state
+      state.selectedNodes = new Set();
+      state.hiddenNodes = new Set();
+      state.deletedNodes = new Set();
+
+      // Create Sigma renderer
+      const container = document.getElementById('graph');
+
+      // Check WebGL support
+      const testCanvas = document.createElement('canvas');
+      const gl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+      if (!gl) {
+        throw new Error('WebGL not supported. Sigma.js requires WebGL to render graphs. Try enabling hardware acceleration in your browser settings.');
+      }
+
+      // Clear any existing canvas elements from container
+      container.innerHTML = '';
+
+      // Get Sigma constructor (handle different export patterns)
+      const SigmaConstructor = window.Sigma?.default || window.Sigma;
+      if (!SigmaConstructor) {
+        throw new Error('Sigma library not loaded. Check CDN script tag.');
+      }
+
+      viewer = new SigmaConstructor(graph, container, {
+        renderLabels: true,
+        labelRenderedSizeThreshold: 8,
+        labelFont: 'bold 16px Inter, system-ui, sans-serif',
+        labelSize: 16,
+        labelColor: { color: '#ffffff' },
+        defaultNodeColor: '#666',
+        defaultEdgeColor: '#404040',
+        defaultEdgeType: 'arrow',
+        minCameraRatio: 0.05,
+        maxCameraRatio: 10,
+        // Disable canvas hover rendering - use HTML tooltip instead
+        hoverRenderer: () => {},
+        nodeReducer: (node, data) => {
+          const isSelected = state.selectedNodes.has(node);
+          const baseSize = 5;
+
+          return {
+            ...data,
+            size: isSelected ? baseSize * 2 : baseSize,
+            color: isSelected ? '#ffffff' : data.color,
+            borderColor: isSelected ? data.color : undefined,
+            borderSize: isSelected ? 2 : 0,
+          };
+        },
+        edgeReducer: (edge, data) => {
+          const [src, dst] = graph.extremities(edge);
+          const isHighlighted = state.selectedNodes.has(src) || state.selectedNodes.has(dst);
+
+          return {
+            ...data,
+            color: isHighlighted ? '#888' : '#404040',
+            size: isHighlighted ? 2 : 1,
+          };
+        },
+      });
+
+      // Event listeners
+      viewer.on('clickNode', ({ node }) => {
+        toggleSelection(node);
+      });
+
+      viewer.on('clickStage', () => {
+        if (state.selectedNodes.size > 0) {
+          clearSelection();
+        }
+      });
+
+      // Node hover tooltips
+      viewer.on('enterNode', ({ node }) => {
+        showNodeTooltip(node);
+      });
+
+      viewer.on('leaveNode', () => {
+        hideNodeTooltip();
+      });
+
+      // Edge hover tooltips
+      viewer.on('enterEdge', ({ edge }) => {
+        const attrs = graph.getEdgeAttributes(edge);
+        const [src, dst] = graph.extremities(edge);
+        const srcLabel = graph.getNodeAttribute(src, 'label');
+        const dstLabel = graph.getNodeAttribute(dst, 'label');
+
+        showEdgeTooltip({
+          kind: attrs.kind,
+          confidence: attrs.confidence ?? 1.0,
+          from: srcLabel,
+          to: dstLabel,
+        });
+      });
+
+      viewer.on('leaveEdge', () => {
+        hideEdgeTooltip();
+      });
+
+      // Tooltip position tracking
+      viewer.getContainer().addEventListener('mousemove', (e) => {
+        updateNodeTooltipPosition(e);
+        updateEdgeTooltipPosition(e);
+      });
+
+      viewer.getCamera().on('updated', () => {
+        const ratio = viewer.getCamera().ratio;
+        const newLOD = getLODFromZoom(ratio);
+        if (newLOD !== state.lod) {
+          state.lod = newLOD;
+          document.getElementById('lod-value').textContent = newLOD;
+        }
+
+        // Update community visualization on camera changes
+        renderCommunityBackgrounds();
+        renderCommunityLabels();
+      });
+
+      // Apply initial projection
+      applyProjection();
+      updateStats();
+      updateSelectionUI();
+
+      // Render initial community visualization
+      renderCommunityBackgrounds();
+      renderCommunityLabels();
+
+      setLoading(false);
+
+      showToast(`Loaded ${graph.order} nodes, ${graph.size} edges`);
+      } catch (err) {
+        console.error('Viewer initialization failed:', err);
+        showToast(`Error: ${err.message}`, 5000);
+        setLoading(false);
+      }
+    }
+
+    // ============================================
+    // Selection
+    // ============================================
+    function toggleSelection(nodeId) {
+      if (state.selectedNodes.has(nodeId)) {
+        state.selectedNodes.delete(nodeId);
+      } else {
+        state.selectedNodes.add(nodeId);
+      }
+      applyProjection();
+      updateSelectionUI();
+    }
+
+    function clearSelection() {
+      state.selectedNodes.clear();
+      applyProjection();
+      updateSelectionUI();
+    }
+
+    // ============================================
+    // Agent API (window.semanticLens)
+    // ============================================
+    window.semanticLens = {
+      // Selection
+      select: (nodeIds) => {
+        state.selectedNodes = new Set(nodeIds);
+        applyProjection();
+        updateSelectionUI();
+      },
+      deselect: (nodeIds) => {
+        for (const id of nodeIds) {
+          state.selectedNodes.delete(id);
+        }
+        applyProjection();
+        updateSelectionUI();
+      },
+      getSelected: () => Array.from(state.selectedNodes),
+      clearSelection: () => {
+        clearSelection();
+      },
+
+      // Visibility
+      hide: (nodeIds) => {
+        for (const id of nodeIds) {
+          state.hiddenNodes.add(id);
+        }
+        applyProjection();
+      },
+      show: (nodeIds) => {
+        for (const id of nodeIds) {
+          state.hiddenNodes.delete(id);
+        }
+        applyProjection();
+      },
+      showAll: () => {
+        state.hiddenNodes.clear();
+        applyProjection();
+      },
+      delete: (nodeIds) => {
+        for (const id of nodeIds) {
+          state.deletedNodes.add(id);
+          state.selectedNodes.delete(id);
+        }
+        applyProjection();
+        updateSelectionUI();
+      },
+
+      // Navigation
+      centerOn: (nodeIds) => {
+        if (!viewer || nodeIds.length === 0) return;
+
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+
+        for (const nodeId of nodeIds) {
+          if (graph.hasNode(nodeId)) {
+            const x = graph.getNodeAttribute(nodeId, 'x');
+            const y = graph.getNodeAttribute(nodeId, 'y');
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+          }
+        }
+
+        if (!isFinite(minX)) return;
+
+        const camera = viewer.getCamera();
+        camera.animate({
+          x: (minX + maxX) / 2,
+          y: (minY + maxY) / 2,
+          ratio: Math.max(0.1, Math.min(5, Math.max(maxX - minX, maxY - minY) / 500)),
+        }, { duration: 300 });
+      },
+      zoomTo: (lod) => {
+        if (!viewer) return;
+        const ratios = { overview: 3.0, structure: 1.0, detail: 0.3 };
+        viewer.getCamera().animate({ ratio: ratios[lod] || 1 }, { duration: 300 });
+      },
+      fit: () => {
+        if (viewer) {
+          viewer.getCamera().animate({ x: 0.5, y: 0.5, ratio: 1 }, { duration: 300 });
+        }
+      },
+
+      // Edge control
+      setEdgeMode: (mode) => {
+        state.edgeMode = mode;
+        document.querySelector(`input[name="edge-mode"][value="${mode}"]`).checked = true;
+        applyProjection();
+      },
+      getEdgeMode: () => state.edgeMode,
+
+      // Isolates
+      setShowIsolates: (show) => {
+        state.showIsolates = show;
+        document.getElementById('show-isolates').checked = show;
+        applyProjection();
+      },
+      getShowIsolates: () => state.showIsolates,
+
+      // State
+      getState: () => ({
+        lod: state.lod,
+        edgeMode: state.edgeMode,
+        selectedNodes: Array.from(state.selectedNodes),
+        hiddenNodes: Array.from(state.hiddenNodes),
+        deletedNodes: Array.from(state.deletedNodes),
+        showIsolates: state.showIsolates,
+        hideExternalEdges: state.hideExternalEdges,
+      }),
+
+      // Query
+      findNodes: (query) => {
+        if (!graph) return [];
+        const results = [];
+        graph.forEachNode((nodeId, attrs) => {
+          if (query.kind && attrs.kind !== query.kind) return;
+          if (query.file && !attrs.file.includes(query.file)) return;
+          if (query.name && attrs.label !== query.name) return;
+          if (query.namePattern && !new RegExp(query.namePattern).test(attrs.label)) return;
+          results.push(nodeId);
+        });
+        return results;
+      },
+      getNodeInfo: (nodeId) => {
+        if (!graph || !graph.hasNode(nodeId)) return null;
+        return graph.getNodeAttributes(nodeId);
+      },
+
+      // Snapshot
+      snapshot: async (format = 'json') => {
+        if (!viewer || !graph) return null;
+
+        if (format === 'json') {
+          const nodes = [];
+          graph.forEachNode((nodeId, attrs) => {
+            nodes.push({
+              id: nodeId,
+              label: attrs.label,
+              kind: attrs.kind,
+              file: attrs.file,
+              selected: state.selectedNodes.has(nodeId),
+              visible: !attrs.hidden,
+            });
+          });
+          return {
+            timestamp: new Date().toISOString(),
+            stats: {
+              totalNodes: graph.order,
+              totalEdges: graph.size,
+              isolates: isolates.size,
+            },
+            nodes,
+            selectedNodes: Array.from(state.selectedNodes),
+          };
+        } else {
+          // PNG snapshot
+          const layers = viewer.getCanvases();
+          const canvas = document.createElement('canvas');
+          canvas.width = viewer.getContainer().clientWidth;
+          canvas.height = viewer.getContainer().clientHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#1a1a2e';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          for (const layer of ['edges', 'nodes', 'labels']) {
+            if (layers[layer]) {
+              ctx.drawImage(layers[layer], 0, 0);
+            }
+          }
+          return canvas.toDataURL('image/png');
+        }
+      },
+    };
+
+    // ============================================
+    // Event Handlers
+    // ============================================
+    document.getElementById('file-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const bundle = JSON.parse(text);
+        initViewer(bundle);
+      } catch (err) {
+        showToast('Failed to load file: ' + err.message);
+        console.error(err);
+      }
+    });
+
+    document.getElementById('load-api-btn').addEventListener('click', async () => {
+      try {
+        setLoading(true);
+        // Try common ports
+        for (const port of [3001, 3002, 3003]) {
+          try {
+            const response = await fetch(`http://localhost:${port}/views`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.views && data.views.length > 0) {
+                // Get first view
+                const viewResponse = await fetch(`http://localhost:${port}/view`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ view_id: data.views[0] }),
+                });
+                if (viewResponse.ok) {
+                  const bundle = await viewResponse.json();
+                  initViewer(bundle);
+                  return;
+                }
+              }
+            }
+          } catch {
+            continue;
+          }
+        }
+        showToast('Could not connect to API on ports 3001-3003');
+      } catch (err) {
+        showToast('Failed to load from API: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // Fixture dropdown
+    document.getElementById('fixture-select').addEventListener('change', async (e) => {
+      const filename = e.target.value;
+      if (!filename) return;
+
+      setLoading(true);
+      try {
+        const response = await fetch(`/fixtures/${filename}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const bundle = await response.json();
+        initViewer(bundle);
+      } catch (err) {
+        showToast(`Failed to load fixture: ${err.message}`, 5000);
+        setLoading(false);
+      }
+      e.target.value = ''; // Reset dropdown
+    });
+
+    // Refresh manifest button
+    document.getElementById('refresh-manifest-btn').addEventListener('click', async () => {
+      await refreshManifest();
+    });
+
+    document.querySelectorAll('input[name="edge-mode"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        state.edgeMode = e.target.value;
+        applyProjection();
+      });
+    });
+
+    document.getElementById('show-isolates').addEventListener('change', (e) => {
+      state.showIsolates = e.target.checked;
+      applyProjection();
+    });
+
+    document.getElementById('hide-external-edges').addEventListener('change', (e) => {
+      state.hideExternalEdges = e.target.checked;
+      applyProjection();
+    });
+
+    // Community visualization controls
+    document.getElementById('show-community-bg').addEventListener('change', (e) => {
+      state.showCommunityBackgrounds = e.target.checked;
+      renderCommunityBackgrounds();
+    });
+
+    document.getElementById('show-community-labels').addEventListener('change', (e) => {
+      state.showCommunityLabels = e.target.checked;
+      renderCommunityLabels();
+    });
+
+    // Label visibility controls
+    document.getElementById('show-node-labels').addEventListener('change', (e) => {
+      state.showNodeLabels = e.target.checked;
+      if (viewer) {
+        viewer.setSetting('renderLabels', e.target.checked);
+        viewer.refresh();
+      }
+    });
+
+    document.getElementById('fit-btn').addEventListener('click', () => {
+      if (viewer) {
+        viewer.getCamera().animate({ x: 0.5, y: 0.5, ratio: 1 }, { duration: 300 });
+      }
+    });
+
+    document.getElementById('clear-selection-btn').addEventListener('click', () => {
+      clearSelection();
+    });
+
+    document.getElementById('snapshot-btn').addEventListener('click', async () => {
+      const snapshot = await window.semanticLens.snapshot('png');
+      if (snapshot) {
+        const link = document.createElement('a');
+        link.href = snapshot;
+        link.download = `semantic-lens-${Date.now()}.png`;
+        link.click();
+        showToast('Snapshot saved');
+      }
+    });
+
+    // Initial state
+    setLoading(false);
+    document.getElementById('loading').classList.add('hidden');
+
+    // Load repository manifest on page load
+    refreshManifest();
+
+    console.log('Semantic Lens Sigma.js viewer ready');
+    console.log('Agent API available at window.semanticLens');
+  </script>
+
+  <!-- Node tooltip -->
+  <div id="node-tooltip" class="node-tooltip"></div>
+
+  <!-- Edge tooltip -->
+  <div id="edge-tooltip" class="edge-tooltip">
+    <div class="kind"></div>
+    <div class="path"></div>
+    <div class="confidence"></div>
+  </div>
+</body>
+</html>
