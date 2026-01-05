@@ -31,11 +31,28 @@ yarn-error.log*
 
 # Test artifacts
 .nyc_output/
+test-results/
 
 # Temporary files
 tmp/
 temp/
 *.tmp
+
+# Generated fixtures (regenerate with: python scripts/generate-fixtures.py)
+fixtures/*.slb
+fixtures/*.slb2
+!fixtures/README.md
+!fixtures/manifest.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# MCP gateway
+.mcp-gateway/
+
+# Debug screenshots
+sigma-*.png
 
 # Lock files (optional - uncomment if you want to ignore)
 # package-lock.json
