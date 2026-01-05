@@ -240,6 +240,81 @@ npm run format
 
 ---
 
+## Graph Analysis with Memgraph Lab
+
+For rapid graph quality iteration (isolates, coupling, edge quality), use Memgraph Lab as an analysis sandbox.
+
+### Quick Start
+
+1. **Start Memgraph + Lab**:
+   ```bash
+   docker compose up -d
+   ```
+
+2. **Import a bundle**:
+   ```bash
+   # Install dependencies if needed
+   npm install
+
+   # Import bundle (use --clear to wipe existing data)
+   npx ts-node tools/import_memgraph.ts fixtures/semantic-lens-v4.slb --clear
+   ```
+
+3. **Open Lab**: http://localhost:3003
+
+4. **Connect**:
+   - Click "New connection" → "Memgraph instance"
+   - Host: `memgraph`, Port: `7687`
+   - Authentication: "Username/password"
+   - Username: `memgraph`, Password: `memgraph`
+   - Click "Connect"
+
+5. **Run queries**: See [`docs/memgraph_queries.md`](docs/memgraph_queries.md) for saved analysis queries
+
+### Common Queries
+
+```cypher
+-- Graph overview
+MATCH (n:Sym) RETURN n.kind AS kind, count(n) AS count ORDER BY count DESC;
+
+-- Find isolates (disconnected nodes)
+MATCH (n:Sym) WHERE degree(n) = 0 RETURN n.kind, n.name, n.file LIMIT 50;
+
+-- Cross-file coupling hotspots
+MATCH (a:Sym)-[r:CALLS]->(b:Sym)
+WHERE a.file <> b.file
+RETURN a.file, b.file, count(r) AS calls ORDER BY calls DESC LIMIT 20;
+```
+
+### Custom Ports
+
+Override default ports with environment variables:
+
+```bash
+MEMGRAPH_BOLT_PORT=7688 MEMGRAPH_LAB_PORT=3005 docker compose up -d
+```
+
+### Shutting Down
+
+```bash
+docker compose down      # Keeps data volume
+docker compose down -v   # Removes data volume
+```
+
+### When to Use Lab vs Cytoscape
+
+| Task | Tool |
+|------|------|
+| Cypher queries, statistics | Memgraph Lab |
+| Find isolates, coupling | Memgraph Lab |
+| Semantic zoom exploration | Cytoscape (demo.html) |
+| Pattern visualization | Cytoscape (demo.html) |
+| Code-centric navigation | Cytoscape (demo.html) |
+
+See [`docs/decision_memgraph_lab.md`](docs/decision_memgraph_lab.md) for architecture decision details.
+
+---
+
 ## Current Project Status
 
 ### Implementation Progress

@@ -151,7 +151,7 @@
     #toolbar .spacer { flex: 1; }
     #stats { font-size: 12px; color: #57606a; }
 
-    #cy { flex: 1; }
+    #cy { flex: 1; background-color: #1a1a2e; }
 
     /* Node info panel */
     #nodeInfo {
@@ -240,6 +240,34 @@
           <input type="checkbox" id="showMethods" style="width: auto; margin: 0;">
           <span>Show Methods</span>
         </label>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Graph Display</h3>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; margin-bottom: 8px;">
+          <input type="checkbox" id="showIsolateRing" checked style="width: auto; margin: 0;">
+          <span>Show isolate ring</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; margin-bottom: 8px;">
+          <input type="checkbox" id="fitToConnected" checked style="width: auto; margin: 0;">
+          <span>Fit to connected only</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; margin-bottom: 8px;">
+          <input type="checkbox" id="hideExternalEdges" style="width: auto; margin: 0;">
+          <span>Hide external edges</span>
+        </label>
+        <div style="margin-top: 8px;">
+          <label style="font-size: 12px; color: #8b949e; display: block; margin-bottom: 4px;">Edge Display</label>
+          <select id="edgeMode" style="width: 100%;">
+            <option value="all" selected>All Edges</option>
+            <option value="hover">Hover Reveal</option>
+            <option value="selection">Selection Only</option>
+            <option value="off">Off</option>
+          </select>
+        </div>
+        <div id="graphStats" style="margin-top: 10px; font-size: 12px; color: #8b949e;">
+          Connected: <span id="connectedCount">0</span> | Isolates: <span id="isolateCount">0</span> (ring)
+        </div>
       </div>
 
       <div class="sidebar-section">
@@ -340,13 +368,200 @@
     let showMethodsEnabled = false;  // Track if methods should be visible (default: hidden)
     let edgeFilterMode = 'all';  // Track edge filtering: 'all', 'non-synthetic', 'structural'
 
+    // Isolate ring state
+    let showIsolateRing = true;
+    let fitToConnectedOnly = true;
+    let edgeMode = 'all'; // 'off' | 'selection' | 'hover' | 'all'
+    let hideExternalEdges = false;  // Hide edges that cross community boundaries
+
+    // ========================================
+    // ISOLATE/CONNECTED HELPERS
+    // ========================================
+
+    function getIsolates(cyGraph) {
+      if (!cyGraph) return cyGraph.collection();
+      return cyGraph.nodes('.code').filter(n => n.connectedEdges().length === 0);
+    }
+
+    function getConnectedNodes(cyGraph) {
+      if (!cyGraph) return cyGraph.collection();
+      const isolates = getIsolates(cyGraph);
+      return cyGraph.nodes('.code').difference(isolates);
+    }
+
+    function getConnectedEdges(cyGraph) {
+      const conn = getConnectedNodes(cyGraph);
+      return conn.connectedEdges();
+    }
+
+    // ========================================
+    // EDGE VISIBILITY MODE
+    // ========================================
+
+    function applyEdgeMode(cyGraph) {
+      if (!cyGraph) return;
+
+      if (edgeMode === 'off') {
+        cyGraph.edges().style('display', 'none');
+        return;
+      }
+      if (edgeMode === 'all') {
+        // Show all edges, but respect external edge filter
+        cyGraph.edges().forEach(edge => {
+          if (hideExternalEdges && isExternalEdge(edge)) {
+            edge.style('display', 'none');
+          } else {
+            edge.style('display', 'element');
+          }
+        });
+        return;
+      }
+      if (edgeMode === 'hover') {
+        // hover mode - hide all edges, will be shown on hover
+        cyGraph.edges().style('display', 'none');
+        return;
+      }
+      // selection mode - hide all, show only selected node's edges
+      cyGraph.edges().style('display', 'none');
+      const sel = cyGraph.nodes(':selected');
+      if (sel.length > 0) {
+        sel.connectedEdges().forEach(edge => {
+          if (hideExternalEdges && isExternalEdge(edge)) {
+            edge.style('display', 'none');
+          } else {
+            edge.style('display', 'element');
+          }
+        });
+      }
+    }
+
+    // ========================================
+    // ISOLATE RING POSITIONER (DETERMINISTIC)
+    // ========================================
+
+    function layoutIsolateRing(cyGraph) {
+      if (!cyGraph) return;
+
+      const isolates = getIsolates(cyGraph);
+      if (!showIsolateRing) {
+        isolates.style('display', 'none');
+        return;
+      }
+      isolates.style('display', 'element');
+      isolates.addClass('isolate');
+
+      const connected = getConnectedNodes(cyGraph);
+      if (connected.length === 0) return;
+
+      // Bounding box of connected graph only
+      const bb = connected.boundingBox({ includeLabels: false });
+      const cx = (bb.x1 + bb.x2) / 2;
+      const cyCenter = (bb.y1 + bb.y2) / 2;
+
+      const w = Math.max(1, bb.w);
+      const h = Math.max(1, bb.h);
+      const radius = 0.70 * Math.max(w, h) + 120;
+
+      // Stable ordering (positions don't jump between refreshes)
+      const sorted = isolates.toArray().sort((a, b) => {
+        return String(a.id()).localeCompare(String(b.id()));
+      });
+
+      const n = sorted.length;
+      if (n === 0) return;
+
+      cyGraph.batch(() => {
+        for (let i = 0; i < n; i++) {
+          const theta = (2 * Math.PI * i) / n;
+          const x = cx + radius * Math.cos(theta);
+          const y = cyCenter + radius * Math.sin(theta);
+          sorted[i].position({ x, y });
+        }
+      });
+    }
+
+    // ========================================
+    // FIT TO CONNECTED ONLY
+    // ========================================
+
+    function fitGraph(cyGraph) {
+      if (!cyGraph) return;
+
+      if (!fitToConnectedOnly) {
+        cyGraph.fit(undefined, 40);
+        return;
+      }
+      const conn = getConnectedNodes(cyGraph);
+      if (conn.length > 0) {
+        cyGraph.fit(conn, 60);
+      } else {
+        cyGraph.fit(undefined, 40);
+      }
+    }
+
+    // ========================================
+    // LAYOUT PIPELINE: MAIN LAYOUT THEN RING
+    // ========================================
+
+    async function runMainLayoutThenRing(cyGraph, layoutName, layoutConfig) {
+      if (!cyGraph) return;
+
+      const connected = getConnectedNodes(cyGraph);
+      const isolates = getIsolates(cyGraph);
+
+      // 1) Hide isolates during main layout so they don't affect it
+      isolates.style('display', 'none');
+
+      // 2) Run layout ONLY on connected nodes
+      if (connected.length > 0 && layoutConfig) {
+        return new Promise((resolve) => {
+          const layout = connected.layout(layoutConfig);
+          layout.one('layoutstop', () => {
+            // 3) Place isolates as ring AFTER main layout
+            layoutIsolateRing(cyGraph);
+
+            // 4) Fit camera to connected only
+            fitGraph(cyGraph);
+
+            // 5) Apply edge mode
+            applyEdgeMode(cyGraph);
+
+            resolve();
+          });
+          layout.run();
+        });
+      } else {
+        // No connected nodes, just show isolates
+        layoutIsolateRing(cyGraph);
+        fitGraph(cyGraph);
+        applyEdgeMode(cyGraph);
+      }
+    }
+
+    // ========================================
+    // UPDATE GRAPH STATS
+    // ========================================
+
+    function updateGraphStats(cyGraph) {
+      if (!cyGraph) return;
+
+      const isolates = getIsolates(cyGraph);
+      const connected = getConnectedNodes(cyGraph);
+
+      const connectedCountEl = document.getElementById('connectedCount');
+      const isolateCountEl = document.getElementById('isolateCount');
+
+      if (connectedCountEl) connectedCountEl.textContent = connected.length;
+      if (isolateCountEl) isolateCountEl.textContent = isolates.length;
+    }
+
     // Node colors by kind
     const kindColors = {
       'module': '#e74c3c',
       'class': '#3498db',
       'interface': '#9b59b6',
       'function': '#2ecc71',
-      'method': '#1abc9c',
+      'method': '#00bcd4',
       'field': '#f39c12',
       'property': '#e67e22',
       'trait': '#e91e63'
@@ -731,6 +946,61 @@
       return normalized;
     }
 
+    // Sort nodes within a community to minimize edge crossings
+    // Places highly-connected nodes centrally, interleaving around center position
+    function sortNodesWithinCommunity(nodes) {
+      if (nodes.length <= 2) return nodes;
+
+      // Build adjacency info within this community
+      const nodeSet = new Set(nodes.map(n => n.id()));
+      const connectionCounts = new Map();
+
+      nodes.forEach(node => {
+        let count = 0;
+        node.connectedEdges().forEach(edge => {
+          const otherId = edge.source().id() === node.id()
+            ? edge.target().id() : edge.source().id();
+          if (nodeSet.has(otherId)) count++;
+        });
+        connectionCounts.set(node.id(), count);
+      });
+
+      // Sort by connection count (most connected first)
+      const sorted = [...nodes].sort((a, b) =>
+        connectionCounts.get(b.id()) - connectionCounts.get(a.id())
+      );
+
+      // Interleave: place most connected at center, then alternate +/- positions
+      const result = new Array(sorted.length);
+      let left = Math.floor(sorted.length / 2);
+      let right = left + 1;
+      let useLeft = true;
+
+      sorted.forEach((node, i) => {
+        if (i === 0) {
+          result[left] = node;
+        } else if (useLeft && left > 0) {
+          result[--left] = node;
+          useLeft = false;
+        } else if (right < sorted.length) {
+          result[right++] = node;
+          useLeft = true;
+        } else {
+          result[--left] = node;
+        }
+      });
+
+      return result.filter(n => n);
+    }
+
+    // Classify an edge as internal or external based on community membership
+    function isExternalEdge(edge) {
+      const sourceComm = edge.source().data('communityId');
+      const targetComm = edge.target().data('communityId');
+      // External if endpoints are in different communities (or if community not set)
+      return sourceComm !== undefined && targetComm !== undefined && sourceComm !== targetComm;
+    }
+
     // Two-level community layout
     function communityLayout() {
       const params = getLayoutParams();
@@ -738,12 +1008,13 @@
 
       const communities = detectCommunities();
 
-      // Group nodes by community
+      // Group nodes by community and store communityId on each node
       const groups = new Map();
       communities.forEach((communityId, nodeId) => {
         if (!groups.has(communityId)) groups.set(communityId, []);
         const node = cy.getElementById(nodeId);
         if (node.length > 0) {
+          node.data('communityId', communityId);  // Store community membership
           groups.get(communityId).push(node);
         }
       });
@@ -761,13 +1032,14 @@
         const centroidX = params.centerX + params.mainRadius * Math.cos(angle);
         const centroidY = params.centerY + params.mainRadius * Math.sin(angle);
 
-        // Micro layout: circular within community
+        // Micro layout: circular within community (sorted to minimize edge crossings)
         if (nodes.length === 1) {
           nodes[0].position({ x: centroidX, y: centroidY });
         } else {
           const subRadius = getSubCircleRadius(nodes.length, params);
-          nodes.forEach((node, i) => {
-            const nodeAngle = (2 * Math.PI * i / nodes.length);
+          const sortedNodes = sortNodesWithinCommunity(nodes);
+          sortedNodes.forEach((node, i) => {
+            const nodeAngle = (2 * Math.PI * i / sortedNodes.length);
             node.position({
               x: centroidX + subRadius * Math.cos(nodeAngle),
               y: centroidY + subRadius * Math.sin(nodeAngle)
@@ -984,10 +1256,10 @@
       DETAIL: 'detail'
     };
 
-    // Zoom thresholds (narrow transitions)
+    // Zoom thresholds (updated: Z1=0.7, Z2=1.4)
     const ZOOM_THRESHOLDS = {
-      OVERVIEW_MAX: 0.3,
-      STRUCTURE_MAX: 0.8
+      OVERVIEW_MAX: 0.7,   // < 0.7 = overview mode
+      STRUCTURE_MAX: 1.4   // 0.7-1.4 = structure mode, > 1.4 = detail mode
     };
 
     let currentZoomMode = ZOOM_MODE.STRUCTURE;
@@ -1025,9 +1297,9 @@
         isolatedNodeSize: Math.max(5, Math.round(1.0 * vu)),
         labelFontSize: Math.max(9, Math.round(1.4 * vu)) + 'px',
         mainRadius: 35 * vu,
-        subRadiusMin: 4 * vu,
-        subRadiusMax: 15 * vu,
-        subRadiusFactor: 1.2 * vu,
+        subRadiusMin: 8 * vu,       // Doubled from 4 * vu for more spacing
+        subRadiusMax: 25 * vu,      // Increased from 15 * vu
+        subRadiusFactor: 2.5 * vu,  // Doubled from 1.2 * vu for more space per node
         outerRadius: 52 * vu,
         centerX: container.clientWidth / 2,
         centerY: container.clientHeight / 2
@@ -1187,22 +1459,31 @@
     // SEMANTIC ZOOM STYLE FUNCTIONS
     // ========================================
 
-    // Overview mode: 10-12px dots, no labels, methods hidden
+    // Overview mode: viewport-scaled dots with small labels
     function getOverviewStyles() {
+      if (!layoutParams) layoutParams = getLayoutParams();
+      const nodeSize = layoutParams ? layoutParams.nodeSize : 12;
+      const fontSize = Math.max(7, Math.round(nodeSize * 0.7)) + 'px';
       return [
         { selector: ':parent', style: {
-          'width': '12px',
-          'height': '12px',
+          'width': nodeSize * 1.5,
+          'height': nodeSize * 1.5,
           'shape': 'ellipse',
-          'label': '',
+          'label': 'data(shortLabel)',
+          'font-size': fontSize,
+          'color': '#e0e0e0',
+          'text-opacity': 0.8,
           'padding': '0px',
           'background-opacity': 0.8
         }},
         { selector: 'node.code', style: {
-          'width': '10px',
-          'height': '10px',
+          'width': nodeSize,
+          'height': nodeSize,
           'shape': 'ellipse',
-          'label': ''
+          'label': 'data(shortLabel)',
+          'font-size': fontSize,
+          'color': '#e0e0e0',
+          'text-opacity': 0.8
         }},
         { selector: 'node[kind="method"]', style: {
           'display': 'none'
@@ -1214,29 +1495,31 @@
       ];
     }
 
-    // Structure mode: Icons with labels below
+    // Structure mode: Icons with truncated labels below
     function getStructureStyles() {
-      const nodeSize = layoutParams ? layoutParams.nodeSize : 14;
+      if (!layoutParams) layoutParams = getLayoutParams();
+      const nodeSize = layoutParams ? layoutParams.nodeSize : 12;
+      const fontSize = layoutParams ? layoutParams.labelFontSize : '9px';
       return [
         { selector: ':parent', style: {
-          'width': nodeSize * 1.5,
-          'height': nodeSize * 1.5,
           'shape': 'round-rectangle',
-          'label': 'data(label)',
+          'label': 'data(shortLabel)',
           'text-valign': 'bottom',
           'text-margin-y': 6,
           'padding': '10px',
-          'font-size': '10px',
+          'font-size': fontSize,
+          'color': '#e0e0e0',
           'background-opacity': 0.6
         }},
         { selector: 'node.code', style: {
           'width': nodeSize,
           'height': nodeSize,
           'shape': 'ellipse',
-          'label': 'data(label)',
+          'label': 'data(shortLabel)',
           'text-valign': 'bottom',
           'text-margin-y': 4,
-          'font-size': '9px'
+          'font-size': fontSize,
+          'color': '#e0e0e0'
         }},
         { selector: 'node[kind="method"]', style: {
           'display': 'none'
@@ -1250,7 +1533,9 @@
 
     // Detail mode: Full containers, auto-fit children, methods visible
     function getDetailStyles() {
-      const nodeSize = layoutParams ? layoutParams.nodeSize : 14;
+      if (!layoutParams) layoutParams = getLayoutParams();
+      const nodeSize = layoutParams ? Math.round(layoutParams.nodeSize * 1.2) : 14;
+      const fontSize = layoutParams ? layoutParams.labelFontSize : '10px';
       return [
         { selector: ':parent', style: {
           'width': null,  // auto-fit
@@ -1259,19 +1544,21 @@
           'label': 'data(label)',
           'text-valign': 'top',
           'text-margin-y': -10,
-          'padding': '25px',
-          'font-size': '12px',
+          'padding': '20px',
+          'font-size': fontSize,
+          'color': '#e0e0e0',
           'background-opacity': 0.6
         }},
         { selector: 'node.code', style: {
-          'width': nodeSize * 1.2,
-          'height': nodeSize * 1.2,
+          'width': nodeSize,
+          'height': nodeSize,
           'shape': 'ellipse',
           'label': 'data(label)',
           'text-valign': 'top',
           'text-margin-y': -8,
-          'font-size': layoutParams ? layoutParams.labelFontSize : '11px',
-          'text-background-color': '#fff',
+          'font-size': fontSize,
+          'color': '#e0e0e0',
+          'text-background-color': '#333',
           'text-background-opacity': 0.9,
           'text-background-padding': '2px'
         }},
@@ -1308,6 +1595,19 @@
         });
       });
 
+      // Force style refresh to ensure zoom mode overrides apply
+      cy.style().update();
+
+      // At overview, hide edges entirely. Otherwise, apply edge mode.
+      if (mode === ZOOM_MODE.OVERVIEW) {
+        cy.edges().style('display', 'none');
+      } else {
+        applyEdgeMode(cy);
+      }
+
+      // Keep isolate ring properly positioned
+      layoutIsolateRing(cy);
+
       updateZoomModeIndicator(mode);
     }
 
@@ -1334,37 +1634,37 @@
               'label': 'data(label)',
               'text-valign': 'top',
               'text-halign': 'center',
-              'background-color': '#e3f2fd',
+              'background-color': '#1e3a5f',
               'background-opacity': 0.9,
               'border-width': 1,
-              'border-color': '#90caf9',
+              'border-color': '#4a90c2',
               'font-size': '11px',
-              'color': '#1565c0',
+              'color': '#90caf9',
               'padding': '20px',
               'shape': 'round-rectangle',
               'text-margin-y': -8,
               'z-index': 1
             }
           },
-          // Regular nodes - small circles, no labels by default (sizes set dynamically)
+          // Regular nodes - small circles, no labels by default (fixed sizes for zoom mode override)
           {
             selector: 'node.code',
             style: {
               'label': '',  // No label by default - shown on hover
               'background-color': (ele) => kindColors[ele.data('kind')] || '#888',
-              'width': (ele) => (layoutParams ? layoutParams.nodeSize : 14),
-              'height': (ele) => (layoutParams ? layoutParams.nodeSize : 14),
+              'width': 12,   // Fixed size - zoom modes will override
+              'height': 12,  // Fixed size - zoom modes will override
               'shape': 'ellipse',
               'border-width': 1,
-              'border-color': '#666'
+              'border-color': '#888'
             }
           },
           // Isolated nodes - smaller and faded
           {
             selector: 'node.isolated',
             style: {
-              'width': (ele) => (layoutParams ? layoutParams.isolatedNodeSize : 8),
-              'height': (ele) => (layoutParams ? layoutParams.isolatedNodeSize : 8),
+              'width': 10,   // Fixed size
+              'height': 10,  // Fixed size
               'opacity': 0.5
             }
           },
@@ -1374,10 +1674,10 @@
             style: {
               'label': 'data(label)',
               'font-size': (ele) => (layoutParams ? layoutParams.labelFontSize : '12px'),
-              'color': '#24292f',
+              'color': '#e0e0e0',
               'text-valign': 'top',
               'text-margin-y': -8,
-              'text-background-color': '#fff',
+              'text-background-color': '#333',
               'text-background-opacity': 0.9,
               'text-background-padding': '3px'
             }
@@ -1397,20 +1697,20 @@
               'label': 'data(label)',
               'text-valign': 'top',
               'text-halign': 'center',
-              'background-color': '#f6f8fa',
-              'background-opacity': 0.6,
+              'background-color': '#2d2d44',
+              'background-opacity': 0.8,
               'border-width': 2,
-              'border-color': '#d0d7de',
+              'border-color': '#555',
               'border-style': 'dashed',
               'padding': '20px',
               'shape': 'round-rectangle',
               'font-size': '12px',
-              'color': '#57606a',
+              'color': '#e0e0e0',
               'text-margin-y': -10,
               'z-index': 0,
-              'compound-sizing-wrt-labels': 'exclude',  // Auto-fit: don't include labels in size calc
-              'min-width': '50px',
-              'min-height': '50px'
+              'z-compound-depth': 'bottom',  // Render parent nodes at bottom layer
+              'compound-sizing-wrt-labels': 'exclude'  // Auto-fit: don't include labels in size calc
+              // Removed min-width/min-height to allow zoom modes to resize
             }
           },
           // Edges
@@ -1418,13 +1718,14 @@
             selector: 'edge',
             style: {
               'width': 1.5,
-              'line-color': '#6e7781',
-              'target-arrow-color': '#6e7781',
+              'line-color': '#8b949e',
+              'target-arrow-color': '#8b949e',
               'target-arrow-shape': 'triangle',
               'curve-style': 'bezier',
               'arrow-scale': 0.8,
               'z-index': 999,
-              'z-compound-depth': 'top'
+              'z-compound-depth': 'top',
+              'z-index-compare': 'manual'  // Bypass "edges under nodes" convention
             }
           },
           // Contains edges (file -> nodes)
@@ -1529,12 +1830,22 @@
               'target-arrow-color': '#ff6b6b',
               'z-index': 999
             }
+          },
+          // Isolate ring style
+          {
+            selector: 'node.isolate',
+            style: {
+              'shape': 'ellipse',
+              'width': 10,
+              'height': 10,
+              'opacity': 0.7
+            }
           }
         ],
         layout: { name: 'preset' },
-        wheelSensitivity: 0.2,  // Finer zoom control for semantic zoom
-        minZoom: 0.05,          // Allow further zoom out for overview mode
-        maxZoom: 4
+        wheelSensitivity: 0.15,  // Smoother zoom control
+        minZoom: 0.1,            // Better control at far zoom
+        maxZoom: 3               // Reduced max zoom
       });
 
       // Node click handler - zoom into node when in circle layout, or toggle children
@@ -1593,6 +1904,74 @@
         const node = e.target;
         if (!node.selected()) {
           node.style('label', '');
+        }
+      });
+
+      // Select/unselect handlers for edge mode
+      cy.on('select unselect', 'node', () => {
+        if (edgeMode === 'selection') {
+          applyEdgeMode(cy);
+        }
+      });
+
+      // Hover handlers for edge reveal mode
+      cy.on('mouseover', 'node', function(e) {
+        if (edgeMode !== 'hover') return;
+        const node = e.target;
+
+        // If this is a parent/container, get all children; otherwise just this node
+        const nodesInScope = node.isParent() ? node.descendants().add(node) : node;
+
+        // Show edges connected to nodes in scope (respecting external edge filter)
+        const connectedEdges = nodesInScope.connectedEdges();
+        connectedEdges.forEach(edge => {
+          if (hideExternalEdges && isExternalEdge(edge)) {
+            edge.style('display', 'none');
+          } else {
+            edge.style('display', 'element');
+          }
+        });
+
+        // Show labels on connected nodes
+        const connectedNodes = connectedEdges.connectedNodes();
+        connectedNodes.forEach(n => {
+          n.data('_hoverLabel', true);
+          n.style('label', n.data('label') || n.data('shortLabel') || n.data('name'));
+        });
+
+        // Also show label on hovered node
+        node.style('label', node.data('label') || node.data('shortLabel') || node.data('name'));
+      });
+
+      cy.on('mouseout', 'node', function(e) {
+        if (edgeMode !== 'hover') return;
+        const node = e.target;
+
+        // Get nodes in scope
+        const nodesInScope = node.isParent() ? node.descendants().add(node) : node;
+
+        // Hide edges connected to nodes in scope (unless another hovered/selected)
+        const connectedEdges = nodesInScope.connectedEdges();
+        connectedEdges.style('display', 'none');
+
+        // Hide labels on connected nodes (restore based on zoom mode)
+        const connectedNodes = connectedEdges.connectedNodes();
+        connectedNodes.forEach(n => {
+          n.removeData('_hoverLabel');
+          // Restore label based on current zoom mode
+          if (currentZoomMode === ZOOM_MODE.OVERVIEW) {
+            n.style('label', '');
+          } else if (currentZoomMode === ZOOM_MODE.STRUCTURE) {
+            n.style('label', n.data('shortLabel') || '');
+          }
+          // Detail mode keeps labels, so no change needed
+        });
+
+        // Restore hovered node label
+        if (currentZoomMode === ZOOM_MODE.OVERVIEW) {
+          node.style('label', '');
+        } else if (currentZoomMode === ZOOM_MODE.STRUCTURE) {
+          node.style('label', node.data('shortLabel') || '');
         }
       });
 
@@ -1970,6 +2349,12 @@
         }
       });
 
+      // Helper to create shortLabel for truncated display
+      function makeShortLabel(label) {
+        if (!label) return '';
+        return label.length > 18 ? label.slice(0, 15) + '...' : label;
+      }
+
       // Add nodes with parent relationships
       filteredNodes.forEach(n => {
         const hasParent = n.data.parent;
@@ -1980,13 +2365,13 @@
           console.warn(`Orphaned node ${n.data.id}: parent ${n.data.parent} not found in graph`);
           const { parent, ...nodeData } = n.data;
           elements.nodes.push({
-            data: nodeData,
+            data: { ...nodeData, shortLabel: makeShortLabel(nodeData.label) },
             classes: 'code orphaned'
           });
         } else {
           // Keep parent property if parent exists
           elements.nodes.push({
-            data: { ...n.data },
+            data: { ...n.data, shortLabel: makeShortLabel(n.data.label) },
             classes: 'code'
           });
         }
@@ -2043,6 +2428,7 @@
             document.getElementById('stats').textContent =
               `${visibleNodes} nodes | ${visibleEdges} edges | ELK layout`;
             updateEdgeLegend();
+            updateGraphStats(cy);
           });
           return;  // Skip normal layout flow
 
@@ -2072,6 +2458,7 @@
           document.getElementById('stats').textContent =
             `${connectedCount} connected (${result?.numCommunities || 0} communities) | ${result?.isolated || 0} isolated`;
           updateEdgeLegend();
+          updateGraphStats(cy);
           return;  // Skip normal layout flow
 
         case 'cola':
@@ -2116,6 +2503,7 @@
           document.getElementById('stats').textContent =
             `${connectedNodes.length} connected (${fileCount} groups) | ${isolatedNodes.length} isolated`;
           updateEdgeLegend();
+          updateGraphStats(cy);
           return;  // Skip normal layout flow
         case 'grid':
           layoutConfig = { name: 'grid', animate: false, boundingBox: bb, rows: Math.ceil(Math.sqrt(elements.nodes.length)), padding: 50 };
@@ -2165,6 +2553,9 @@
 
       // Update edge legend counts
       updateEdgeLegend();
+
+      // Update graph stats (connected/isolates)
+      updateGraphStats(cy);
     }
 
     function updateEdgeLegend() {
@@ -2294,6 +2685,39 @@
     document.getElementById('edgeFilter').addEventListener('change', function() {
       edgeFilterMode = this.value;
       renderGraph();  // Re-render with new edge filter
+    });
+
+    // Isolate ring toggle handler
+    document.getElementById('showIsolateRing').addEventListener('change', function() {
+      showIsolateRing = this.checked;
+      if (cy) {
+        layoutIsolateRing(cy);
+        fitGraph(cy);
+      }
+    });
+
+    // Fit to connected toggle handler
+    document.getElementById('fitToConnected').addEventListener('change', function() {
+      fitToConnectedOnly = this.checked;
+      if (cy) {
+        fitGraph(cy);
+      }
+    });
+
+    // External edges toggle handler
+    document.getElementById('hideExternalEdges').addEventListener('change', function() {
+      hideExternalEdges = this.checked;
+      if (cy) {
+        applyEdgeMode(cy);
+      }
+    });
+
+    // Edge mode change handler
+    document.getElementById('edgeMode').addEventListener('change', function() {
+      edgeMode = this.value;
+      if (cy) {
+        applyEdgeMode(cy);
+      }
     });
 
     // Window resize handler - recalculate sizes and re-layout

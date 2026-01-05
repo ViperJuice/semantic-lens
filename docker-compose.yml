@@ -1,0 +1,28 @@
+services:
+  memgraph:
+    image: memgraph/memgraph-mage:latest
+    ports:
+      - "${MEMGRAPH_BOLT_PORT:-7687}:7687"  # Bolt protocol
+      - "${MEMGRAPH_WS_PORT:-7444}:7444"    # Lab websocket
+    volumes:
+      - memgraph-data:/var/lib/memgraph
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/7687' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  memgraph-lab:
+    image: memgraph/lab:latest
+    ports:
+      - "${MEMGRAPH_LAB_PORT:-3003}:3000"  # Lab UI (default 3003 to avoid dev port conflicts)
+    depends_on:
+      memgraph:
+        condition: service_healthy
+    environment:
+      - QUICK_CONNECT_MG_HOST=memgraph
+      - QUICK_CONNECT_MG_PORT=7687
+
+volumes:
+  memgraph-data:
