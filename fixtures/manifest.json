@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-01-04T02:18:17.138Z",
+  "generatedAt": "2026-01-04T22:48:19.177Z",
   "scanPath": "/home/jenner/code",
   "repos": [
     {
@@ -30,9 +30,17 @@
       "name": "ai-dev-kit",
       "path": "/home/jenner/code/ai-dev-kit",
       "remoteUrl": "git@github.com:ViperJuice/ai-dev-kit.git",
-      "lastCommit": "2026-01-03 20:21:42 -0500",
+      "lastCommit": "2026-01-04 14:41:14 -0500",
       "enabled": true,
       "hasFixture": true
+    },
+    {
+      "name": "bankrupt",
+      "path": "/home/jenner/code/bankrupt",
+      "remoteUrl": null,
+      "lastCommit": "2026-01-03 23:52:09 -0500",
+      "enabled": true,
+      "hasFixture": false
     },
     {
       "name": "code-flow-template",
@@ -54,7 +62,7 @@
       "name": "consiliency-orchestrator",
       "path": "/home/jenner/code/consiliency-orchestrator",
       "remoteUrl": "git@github.com:ViperJuice/consiliency-orchestrator.git",
-      "lastCommit": "2026-01-03 21:08:33 -0500",
+      "lastCommit": "2026-01-04 17:36:19 -0500",
       "enabled": true,
       "hasFixture": true
     },
@@ -78,7 +86,7 @@
       "name": "dotfiles",
       "path": "/home/jenner/code/dotfiles",
       "remoteUrl": "git@github.com:ViperJuice/dotfiles.git",
-      "lastCommit": "2025-12-30 15:12:52 -0800",
+      "lastCommit": "2026-01-04 01:46:46 -0500",
       "enabled": true,
       "hasFixture": true
     },
@@ -110,7 +118,7 @@
       "name": "navblue-extension",
       "path": "/home/jenner/code/navblue-extension",
       "remoteUrl": "git@github.com:ViperJuice/navblue-extension.git",
-      "lastCommit": "2026-01-03 20:18:15 -0500",
+      "lastCommit": "2026-01-03 23:51:38 -0500",
       "enabled": true,
       "hasFixture": true
     },
@@ -126,7 +134,7 @@
       "name": "otis-book-editor",
       "path": "/home/jenner/code/otis-book-editor",
       "remoteUrl": "git@github.com:ViperJuice/otis-book-editor.git",
-      "lastCommit": "2026-01-01 20:10:38 -0500",
+      "lastCommit": "2026-01-04 17:35:02 -0500",
       "enabled": true,
       "hasFixture": true
     },
@@ -134,15 +142,15 @@
       "name": "semantic-lens",
       "path": "/home/jenner/code/semantic-lens",
       "remoteUrl": "git@github.com:ViperJuice/semantic-lens.git",
-      "lastCommit": "2026-01-03 00:31:25 -0500",
+      "lastCommit": "2026-01-03 23:53:40 -0500",
       "enabled": true,
-      "hasFixture": false
+      "hasFixture": true
     },
     {
       "name": "treesitter-chunker",
       "path": "/home/jenner/code/treesitter-chunker",
       "remoteUrl": "https://github.com/Consiliency/treesitter-chunker",
-      "lastCommit": "2026-01-03 21:11:51 -0500",
+      "lastCommit": "2026-01-04 17:34:11 -0500",
       "enabled": true,
       "hasFixture": true
     },

@@ -519,9 +519,33 @@
           </div>
         </div>
 
-        <!-- LOD Indicator -->
+        <!-- Semantic Zoom Level -->
         <div class="section">
-          <div class="section-title">Zoom Level</div>
+          <div class="section-title">Navigation Level</div>
+          <div class="lod-indicator" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+            <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+              <span class="label">Level:</span>
+              <span class="value" id="semantic-level-value">Planet</span>
+            </div>
+            <div style="font-size: 10px; color: #666; margin-top: 4px;">
+              Universe → Galaxy → System → Planet
+            </div>
+          </div>
+          <label class="checkbox-option" style="margin-top: 8px;">
+            <input type="checkbox" id="semantic-zoom-enabled" checked>
+            <span>Enable Semantic Zoom</span>
+          </label>
+          <div class="btn-group" style="margin-top: 8px; flex-wrap: wrap; gap: 4px;">
+            <button class="btn" id="zoom-universe-btn" title="Zoom to Universe (Directories)" style="font-size: 11px; padding: 4px 8px;">Dirs</button>
+            <button class="btn" id="zoom-galaxy-btn" title="Zoom to Galaxy (Files)" style="font-size: 11px; padding: 4px 8px;">Files</button>
+            <button class="btn" id="zoom-system-btn" title="Zoom to System (Classes)" style="font-size: 11px; padding: 4px 8px;">Classes</button>
+            <button class="btn" id="zoom-planet-btn" title="Zoom to Planet (All)" style="font-size: 11px; padding: 4px 8px;">All</button>
+          </div>
+        </div>
+
+        <!-- LOD Indicator (legacy) -->
+        <div class="section">
+          <div class="section-title">Legacy LOD</div>
           <div class="lod-indicator">
             <span class="label">LOD:</span>
             <span class="value" id="lod-value">overview</span>
@@ -533,12 +557,12 @@
           <div class="section-title">Edge Visibility</div>
           <div class="radio-group">
             <label class="radio-option">
-              <input type="radio" name="edge-mode" value="selection" checked>
-              <span>Selection Only (default)</span>
+              <input type="radio" name="edge-mode" value="selection">
+              <span>Selection Only</span>
             </label>
             <label class="radio-option">
-              <input type="radio" name="edge-mode" value="all">
-              <span>Show All</span>
+              <input type="radio" name="edge-mode" value="all" checked>
+              <span>Show All (default)</span>
             </label>
             <label class="radio-option">
               <input type="radio" name="edge-mode" value="none">
@@ -553,6 +577,10 @@
           <label class="checkbox-option">
             <input type="checkbox" id="show-community-bg" checked>
             <span>Show Community Backgrounds</span>
+          </label>
+          <label class="checkbox-option">
+            <input type="checkbox" id="show-cosmic-glow" checked>
+            <span>Show Cosmic Glow</span>
           </label>
           <label class="checkbox-option">
             <input type="checkbox" id="show-community-labels" checked>
@@ -615,6 +643,10 @@
             <div class="stat-row">
               <span class="stat-label">Communities:</span>
               <span class="stat-value" id="stat-communities">0</span>
+            </div>
+            <div class="stat-row" id="tier-loading-row" style="display: none;">
+              <span class="stat-label">Loaded Tiers:</span>
+              <span class="stat-value" id="stat-tiers">-</span>
             </div>
           </div>
         </div>
@@ -692,9 +724,15 @@
     let viewer = null;
     let graph = null;
     let isolates = new Set();
+
+    // Tiered loading state (for .slb2 lazy loading)
+    let tieredBundle = null;  // Stores loaded .slb2 bundle
+    let loadedTiers = new Set();  // Tracks which tiers have been loaded ('universe', 'galaxy', 'system', 'planet')
+
     let state = {
       lod: 'overview',
-      edgeMode: 'selection',
+      semanticLevel: 'planet',  // universe | galaxy | system | planet
+      edgeMode: 'all',
       selectedNodes: new Set(),
       hiddenNodes: new Set(),
       deletedNodes: new Set(),
@@ -704,7 +742,21 @@
       showEdgeLabels: false,
       showCommunityLabels: true,
       showCommunityBackgrounds: true,
+      showCosmicGlow: true,  // Cosmic glow effect around nodes
+      semanticZoomEnabled: true,  // Toggle for semantic zoom feature
     };
+
+    // Semantic zoom thresholds
+    const SEMANTIC_LEVELS = {
+      universe: 5.0,   // ratio > 5.0 - show only directories
+      galaxy: 2.0,     // ratio 2.0-5.0 - show files
+      system: 0.5,     // ratio 0.5-2.0 - show classes
+      planet: 0.0      // ratio < 0.5 - show everything
+    };
+
+    // Directory hierarchy cache
+    let directoryHierarchy = null;
+    let directoryMetaNodes = new Map();
 
     // Color palette
     const KIND_COLORS = {
@@ -752,6 +804,25 @@
       document.getElementById('stat-edges').textContent = graph.size;
       document.getElementById('stat-isolates').textContent = isolates.size;
       document.getElementById('stat-communities').textContent = communities.size;
+
+      // Update tier loading status
+      const tierRow = document.getElementById('tier-loading-row');
+      const tierStat = document.getElementById('stat-tiers');
+      if (tieredBundle && loadedTiers.size > 0) {
+        tierRow.style.display = 'flex';
+        const allTiers = ['universe', 'galaxy', 'system', 'planet'];
+        const loadedList = allTiers.filter(t => loadedTiers.has(t));
+        const remaining = allTiers.length - loadedList.length;
+        tierStat.textContent = `${loadedList.length}/4`;
+        tierStat.title = `Loaded: ${loadedList.join(', ')}${remaining > 0 ? ` (${remaining} pending)` : ' (all loaded)'}`;
+      } else {
+        tierRow.style.display = 'none';
+      }
+    }
+
+    // Alias for updateStats to maintain compatibility
+    function updateStatsDisplay() {
+      updateStats();
     }
 
     function updateSelectionUI() {
@@ -946,15 +1017,17 @@
           g.addEdge(edge.src, edge.dst, {
             id: edge.edge_id,
             kind: edge.kind,
+            label: edge.kind, // Show edge type as label
             confidence: edge.confidence || 1.0,
           });
         }
       }
 
-      // Identify isolates
+      // Identify isolates (exclude meta-nodes - they're directory aggregates, not real isolates)
       isolates = new Set();
       g.forEachNode((nodeId) => {
-        if (g.degree(nodeId) === 0) {
+        const attrs = g.getNodeAttributes(nodeId);
+        if (g.degree(nodeId) === 0 && !attrs.isMetaNode) {
           isolates.add(nodeId);
           g.setNodeAttribute(nodeId, 'isolate', true);
         }
@@ -967,37 +1040,214 @@
      * Positions isolate nodes in a ring around the main graph.
      */
     function positionIsolateRing(graph, isolates) {
+      if (!graph || !isolates || isolates.size === 0) return;
+
       // Get bounding box of non-isolate nodes
       let minX = Infinity, maxX = -Infinity;
       let minY = Infinity, maxY = -Infinity;
+      let nonIsolateCount = 0;
 
       graph.forEachNode((nodeId, attrs) => {
-        if (!isolates.has(nodeId)) {
+        if (!isolates.has(nodeId) && !attrs.hidden) {
           minX = Math.min(minX, attrs.x);
           maxX = Math.max(maxX, attrs.x);
           minY = Math.min(minY, attrs.y);
           maxY = Math.max(maxY, attrs.y);
+          nonIsolateCount++;
         }
       });
 
-      // Handle case where all nodes are isolates
-      if (!isFinite(minX)) {
-        minX = 0; maxX = 1000;
-        minY = 0; maxY = 1000;
+      // If no non-isolates, use ALL nodes to determine center
+      // This happens when edges haven't been loaded yet
+      if (!isFinite(minX) || nonIsolateCount === 0) {
+        console.log('[Isolate Ring] No non-isolates found, using all node positions for center');
+        graph.forEachNode((nodeId, attrs) => {
+          if (!attrs.hidden) {
+            const x = attrs.x || 0;
+            const y = attrs.y || 0;
+            if (minX === Infinity) {
+              minX = maxX = x;
+              minY = maxY = y;
+            } else {
+              minX = Math.min(minX, x);
+              maxX = Math.max(maxX, x);
+              minY = Math.min(minY, y);
+              maxY = Math.max(maxY, y);
+            }
+          }
+        });
+
+        // Final fallback for empty graph
+        if (!isFinite(minX)) {
+          minX = -500; maxX = 500;
+          minY = -500; maxY = 500;
+        }
       }
 
       const centerX = (minX + maxX) / 2;
       const centerY = (minY + maxY) / 2;
-      const radius = Math.max(maxX - minX, maxY - minY) * 0.6 + 200;
+      const graphSpread = Math.max(maxX - minX, maxY - minY);
+      // Radius that's OUTSIDE the graph - 1.2x the spread plus padding
+      // This ensures isolates form a ring AROUND the communities, not inside them
+      const radius = Math.max(500, graphSpread * 0.6 + 500);
 
       // Sort for deterministic positioning
       const isolateArray = Array.from(isolates).sort();
 
+      console.log(`[Isolate Ring] Positioning ${isolateArray.length} isolates in ring`);
+      console.log(`  Center: (${centerX.toFixed(0)}, ${centerY.toFixed(0)}), Spread: ${graphSpread.toFixed(0)}, Radius: ${radius.toFixed(0)}`);
+      console.log(`  Non-isolates: ${nonIsolateCount}, Bounding box: (${minX.toFixed(0)},${minY.toFixed(0)}) to (${maxX.toFixed(0)},${maxY.toFixed(0)})`);
+
       isolateArray.forEach((nodeId, i) => {
+        // Distribute evenly around the ring, starting from top
         const angle = (2 * Math.PI * i) / isolateArray.length - Math.PI / 2;
         graph.setNodeAttribute(nodeId, 'x', centerX + radius * Math.cos(angle));
         graph.setNodeAttribute(nodeId, 'y', centerY + radius * Math.sin(angle));
       });
+    }
+
+    /**
+     * Position child nodes in a ring around their parent node (sea urchin style).
+     * This creates the visual effect of "spines" growing from the parent.
+     * @param {string} parentId - The parent node ID
+     * @param {string[]} childIds - Array of child node IDs to position
+     */
+    function positionChildrenAroundParent(parentId, childIds) {
+      if (!graph.hasNode(parentId) || childIds.length === 0) return;
+
+      // Calculate centroid of children's current positions (they may have existing positions from layout)
+      let sumX = 0, sumY = 0, count = 0;
+      childIds.forEach(childId => {
+        if (graph.hasNode(childId)) {
+          const attrs = graph.getNodeAttributes(childId);
+          sumX += attrs.x || 0;
+          sumY += attrs.y || 0;
+          count++;
+        }
+      });
+
+      // Use centroid as ring center (or parent position if no children have positions yet)
+      const parentAttrs = graph.getNodeAttributes(parentId);
+      const centerX = count > 0 ? sumX / count : (parentAttrs.x || 0);
+      const centerY = count > 0 ? sumY / count : (parentAttrs.y || 0);
+      const parentSize = parentAttrs.size || 10;
+
+      // Radius scales with position scale to maintain proportions
+      // More children = larger ring to avoid overcrowding
+      const baseRadius = parentSize * 5 * POSITION_SCALE;
+      const radiusPerChild = Math.max(10, 80 / childIds.length) * POSITION_SCALE;
+      const radius = baseRadius + childIds.length * radiusPerChild;
+
+      childIds.forEach((childId, i) => {
+        if (!graph.hasNode(childId)) return;
+
+        // Distribute evenly around the ring, starting from top
+        const angle = (2 * Math.PI * i) / childIds.length - Math.PI / 2;
+        const childX = centerX + radius * Math.cos(angle);
+        const childY = centerY + radius * Math.sin(angle);
+
+        graph.setNodeAttribute(childId, 'x', childX);
+        graph.setNodeAttribute(childId, 'y', childY);
+        graph.setNodeAttribute(childId, 'parentNode', parentId);
+        graph.setNodeAttribute(childId, 'angleFromParent', angle); // Store for radial label positioning
+      });
+
+      // MOVE PARENT TO CENTER of the ring (hub-and-spoke layout)
+      graph.setNodeAttribute(parentId, 'x', centerX);
+      graph.setNodeAttribute(parentId, 'y', centerY);
+      graph.setNodeAttribute(parentId, 'isHubNode', true);
+
+      console.log(`[Hub Layout] Positioned ${childIds.length} children around hub ${parentId} at center (${centerX.toFixed(0)}, ${centerY.toFixed(0)}), radius: ${radius.toFixed(0)}`);
+    }
+
+    /**
+     * Re-center all hub nodes to the centroid of their children.
+     * Call this AFTER layout algorithms (ForceAtlas2, separateCommunities) have run.
+     */
+    function recenterHubNodes() {
+      if (!graph) return;
+
+      // Find all children grouped by their parent
+      const childrenByParent = new Map();
+      graph.forEachNode((nodeId, attrs) => {
+        if (attrs.parentNode && graph.hasNode(attrs.parentNode)) {
+          if (!childrenByParent.has(attrs.parentNode)) {
+            childrenByParent.set(attrs.parentNode, []);
+          }
+          childrenByParent.get(attrs.parentNode).push(nodeId);
+        }
+      });
+
+      let recenteredCount = 0;
+      childrenByParent.forEach((childIds, parentId) => {
+        if (childIds.length < 2) return;  // Skip small groups
+
+        // Calculate centroid of children
+        let sumX = 0, sumY = 0;
+        childIds.forEach(childId => {
+          const attrs = graph.getNodeAttributes(childId);
+          sumX += attrs.x || 0;
+          sumY += attrs.y || 0;
+        });
+        const centroidX = sumX / childIds.length;
+        const centroidY = sumY / childIds.length;
+
+        // Move parent to centroid
+        graph.setNodeAttribute(parentId, 'x', centroidX);
+        graph.setNodeAttribute(parentId, 'y', centroidY);
+
+        // RECALCULATE angleFromParent for each child based on actual position
+        // This fixes stale angles after separateCommunities distorts the ring
+        childIds.forEach(childId => {
+          const childAttrs = graph.getNodeAttributes(childId);
+          const dx = childAttrs.x - centroidX;
+          const dy = childAttrs.y - centroidY;
+          const angle = Math.atan2(dy, dx);  // Actual angle from hub to child
+          graph.setNodeAttribute(childId, 'angleFromParent', angle);
+        });
+
+        recenteredCount++;
+      });
+
+      if (recenteredCount > 0) {
+        console.log(`[Hub Recenter] Re-centered ${recenteredCount} hub nodes and updated child angles`);
+      }
+    }
+
+    /**
+     * Find parent ID for a node based on its file path or route.
+     * @param {Object} node - Node object with file/route properties
+     * @returns {string|null} - Parent node ID or null
+     */
+    function findParentByPath(node) {
+      if (!node.file && !node.route) return null;
+
+      const path = node.route || node.file;
+      if (!path) return null;
+
+      // Try to find a parent node by path prefix
+      // e.g., "src/lib/parser.ts::Parser" parent might be "src/lib/parser.ts"
+      const parts = path.split('::');
+      if (parts.length > 1) {
+        // Try the file path first
+        const filePath = parts[0];
+        const possibleParentId = filePath;
+        if (graph.hasNode(possibleParentId)) {
+          return possibleParentId;
+        }
+      }
+
+      // Try parent directory
+      const dirParts = path.split('/');
+      if (dirParts.length > 1) {
+        dirParts.pop();
+        const parentDir = dirParts.join('/');
+        if (graph.hasNode(parentDir)) {
+          return parentDir;
+        }
+      }
+
+      return null;
     }
 
     /**
@@ -1011,18 +1261,669 @@
 
       // Run ForceAtlas2 on non-isolate nodes
       const settings = graphologyLibrary.layoutForceAtlas2.inferSettings(graph);
+      const isLargeGraph = graph.order > 10000;
       graphologyLibrary.layoutForceAtlas2.assign(graph, {
         iterations,
         settings: {
           ...settings,
-          gravity: 0.05,  // Lower gravity = communities spread out more from center
-          scalingRatio: 5,  // Tight communities internally
+          gravity: isLargeGraph ? 0.01 : 0.05,  // Lower gravity for large graphs
+          scalingRatio: isLargeGraph ? 10 : 5,   // More spread for large graphs
           barnesHutOptimize: true,
+          barnesHutTheta: 0.5,  // Accuracy vs speed tradeoff
         },
       });
 
       // Reposition isolates after layout (to avoid being pulled in)
       positionIsolateRing(graph, isolates);
+    }
+
+    // ============================================
+    // Tiered Loading (Lazy Loading for .slb2)
+    // ============================================
+
+    /**
+     * Checks if all nodes in graph have pre-computed positions.
+     */
+    function hasPrecomputedPositions() {
+      if (!graph) return false;
+      let hasPositions = true;
+      graph.forEachNode((id, attrs) => {
+        if (attrs.x === undefined || attrs.y === undefined ||
+            (attrs.x === 0 && attrs.y === 0)) {
+          hasPositions = false;
+        }
+      });
+      return hasPositions;
+    }
+
+    /**
+     * Builds graph from a tiered bundle's tier data with pre-computed positions.
+     * @param {Object} tier - Tier data containing nodes, edges, positions
+     * @param {string} tierName - Name of the tier ('universe', 'galaxy', 'system', 'planet')
+     * @returns {Graph} - Graphology graph instance
+     */
+    // Position scaling factor - increase to spread communities apart more
+    const POSITION_SCALE = 3.5;
+
+    function buildGraphFromTier(tier, tierName = 'universe') {
+      const g = new graphology.Graph({ multi: true, type: 'directed' });
+      const nodeIds = new Set();
+
+      // Add nodes with pre-computed positions (scaled up for better spacing)
+      for (const node of tier.nodes) {
+        if (nodeIds.has(node.node_id)) continue;
+        nodeIds.add(node.node_id);
+
+        // Get position from tier.positions and scale up
+        const pos = tier.positions?.[node.node_id] || { x: Math.random() * 1000, y: Math.random() * 1000 };
+        const scaledX = pos.x * POSITION_SCALE;
+        const scaledY = pos.y * POSITION_SCALE;
+
+        g.addNode(node.node_id, {
+          label: node.name,
+          kind: node.kind,
+          file: node.file || node.full_path || '',
+          parent: node.parent,
+          route: node.route,
+          color: KIND_COLORS[node.kind] || '#666666',
+          size: 8, // Initial size, will be set by tier in nodeReducer
+          x: scaledX,
+          y: scaledY,
+          isAggregate: node.is_aggregate || false,
+          nodeCount: node.node_count || 0,
+          tier: tierName, // Set tier for tier-based visibility
+        });
+      }
+
+      // Add edges
+      for (const edge of tier.edges || []) {
+        if (nodeIds.has(edge.src) && nodeIds.has(edge.dst)) {
+          try {
+            g.addEdge(edge.src, edge.dst, {
+              kind: edge.kind,
+              label: edge.kind,
+              confidence: edge.confidence || 1.0,
+            });
+          } catch (e) {
+            // Ignore duplicate edges
+          }
+        }
+      }
+
+      // Identify isolates (exclude meta-nodes - they're directory aggregates, not real isolates)
+      isolates = new Set();
+      g.forEachNode((nodeId) => {
+        const attrs = g.getNodeAttributes(nodeId);
+        if (g.degree(nodeId) === 0 && !attrs.isMetaNode) {
+          isolates.add(nodeId);
+          g.setNodeAttribute(nodeId, 'isolate', true);
+        }
+      });
+
+      return g;
+    }
+
+    /**
+     * Load additional tier on-demand when user zooms in.
+     * @param {string} tierName - 'galaxy', 'system', or 'planet'
+     */
+    async function loadTierOnDemand(tierName) {
+      if (!tieredBundle) return;
+      if (loadedTiers.has(tierName)) return;
+
+      const tier = tieredBundle[tierName];
+      if (!tier || !tier.nodes) {
+        console.warn(`[Lazy Load] Tier '${tierName}' not found in bundle`);
+        return;
+      }
+
+      console.log(`[Lazy Load] Loading ${tierName} tier: ${tier.nodes.length} nodes...`);
+      const startTime = performance.now();
+
+      // Cap the number of nodes to prevent performance issues and visual noise
+      const MAX_NODES_PER_TIER = 2000;
+      const nodesToLoad = tier.nodes.length > MAX_NODES_PER_TIER
+        ? tier.nodes.slice(0, MAX_NODES_PER_TIER)
+        : tier.nodes;
+
+      if (tier.nodes.length > MAX_NODES_PER_TIER) {
+        console.warn(`[Lazy Load] Capping ${tierName} tier from ${tier.nodes.length} to ${MAX_NODES_PER_TIER} nodes`);
+        showToast(`Showing ${MAX_NODES_PER_TIER} of ${tier.nodes.length} ${tierName} nodes`, 3000);
+      }
+
+      // Add nodes from this tier
+      // Track children by parent for sea urchin positioning
+      const childrenByParent = new Map();
+      let addedNodes = 0;
+
+      for (const node of nodesToLoad) {
+        if (graph.hasNode(node.node_id)) continue;
+
+        // Get position - try tier positions first (apply same scaling as buildGraphFromTier)
+        let x, y;
+        const pos = tier.positions?.[node.node_id];
+        if (pos) {
+          x = pos.x * POSITION_SCALE;
+          y = pos.y * POSITION_SCALE;
+        } else {
+          // Temporary position - will be repositioned around parent
+          x = Math.random() * 100 - 50;
+          y = Math.random() * 100 - 50;
+        }
+
+        // Determine parent for this node
+        const parentId = tier.parent_map?.[node.node_id] || findParentByPath(node);
+
+        graph.addNode(node.node_id, {
+          label: node.name,
+          kind: node.kind,
+          file: node.file || '',
+          color: KIND_COLORS[node.kind] || '#666666',
+          size: 5,
+          x, y,
+          hidden: false,
+          tier: tierName,  // Track which tier this node belongs to
+          parentNode: parentId || null,
+        });
+        addedNodes++;
+
+        // Track for parent-child positioning
+        if (parentId && graph.hasNode(parentId)) {
+          if (!childrenByParent.has(parentId)) {
+            childrenByParent.set(parentId, []);
+          }
+          childrenByParent.get(parentId).push(node.node_id);
+        }
+      }
+
+      // Sea urchin positioning: arrange children in rings around their parents
+      let seaUrchinCount = 0;
+      childrenByParent.forEach((childIds, parentId) => {
+        positionChildrenAroundParent(parentId, childIds);
+        seaUrchinCount += childIds.length;
+
+        // Add visual "spine" edges from children to parent
+        childIds.forEach(childId => {
+          if (!graph.hasEdge(childId, parentId) && !graph.hasEdge(parentId, childId)) {
+            try {
+              graph.addEdge(childId, parentId, {
+                kind: 'parent-child',
+                label: '',
+                confidence: 1.0,
+                isSpine: true,  // Mark as parent-child spine edge
+              });
+            } catch (e) {
+              // Ignore if edge already exists
+            }
+          }
+        });
+      });
+
+      if (seaUrchinCount > 0) {
+        console.log(`[Sea Urchin] Positioned ${seaUrchinCount} children around ${childrenByParent.size} parents`);
+      }
+
+      // Add edges from this tier
+      let addedEdges = 0;
+      for (const edge of tier.edges || []) {
+        if (graph.hasNode(edge.src) && graph.hasNode(edge.dst)) {
+          if (!graph.hasEdge(edge.src, edge.dst)) {
+            try {
+              graph.addEdge(edge.src, edge.dst, {
+                kind: edge.kind,
+                label: edge.kind,
+                confidence: edge.confidence || 1.0,
+              });
+              addedEdges++;
+            } catch (e) {
+              // Ignore duplicate edges
+            }
+          }
+        }
+      }
+
+      loadedTiers.add(tierName);
+
+      const elapsed = (performance.now() - startTime).toFixed(0);
+      console.log(`[Lazy Load] ✓ Loaded ${tierName}: ${addedNodes} nodes, ${addedEdges} edges in ${elapsed}ms`);
+
+      // Update stats display
+      updateStatsDisplay();
+
+      // Rebuild hierarchy if we added new nodes
+      if (addedNodes > 0) {
+        buildDirectoryHierarchy();
+        createDirectoryMetaNodes();
+
+        // Assign communities to NEW nodes only (don't re-run full community detection)
+        // This preserves the existing layout while including new nodes
+        detectCommunities();  // Just assigns community IDs, doesn't move nodes
+
+        // DON'T re-run separateCommunities - it would destroy the existing layout
+        // New nodes are already positioned via sea urchin (positionChildrenAroundParent)
+        // DON'T recenterHubNodes() - it causes visual shift on first zoom
+        // Hub positions from initial community layout should be preserved
+        buildCommunityHierarchy();
+
+        // Update labelSide for ALL nodes (including newly added ones)
+        updateAllLabelSides();
+
+        // Re-render community visualization
+        renderCommunityBackgrounds();
+        renderCosmicGlow();
+        renderCommunityLabels();
+      }
+
+      // ALWAYS recalculate isolates after loading new nodes/edges
+      // This must happen AFTER sea urchin positioning so isolates get proper ring positions
+      // Exclude meta-nodes - they're directory aggregates, not real isolates
+      isolates = new Set();
+      graph.forEachNode((nodeId) => {
+        const attrs = graph.getNodeAttributes(nodeId);
+        if (graph.degree(nodeId) === 0 && !attrs.isMetaNode) {
+          isolates.add(nodeId);
+          graph.setNodeAttribute(nodeId, 'isolate', true);
+        } else {
+          graph.setNodeAttribute(nodeId, 'isolate', false);
+        }
+      });
+      console.log(`[Lazy Load] Recalculated isolates: ${isolates.size} nodes with 0 edges (meta-nodes excluded)`);
+
+      // Position ALL isolates in ring around the main graph
+      if (isolates.size > 0) {
+        positionIsolateRing(graph, isolates);
+      }
+
+      // Refresh viewer
+      if (viewer) {
+        viewer.refresh();
+      }
+    }
+
+    /**
+     * Initialize viewer with a tiered bundle (.slb2 format).
+     * Only loads the universe tier initially for fast startup.
+     * @param {Object} bundle - Tiered bundle with universe/galaxy/system/planet tiers
+     */
+    async function initViewerWithTieredBundle(bundle) {
+      console.log('[Tiered Loading] Initializing with tiered bundle...');
+      const startTime = performance.now();
+
+      // Store bundle for lazy loading
+      tieredBundle = bundle;
+      loadedTiers = new Set(['universe']);
+
+      setLoading(true);
+
+      try {
+        // Validate libraries
+        if (!window.graphology?.Graph) {
+          throw new Error('Graphology library not loaded');
+        }
+
+        // Log tier stats
+        console.log(`[Tiered Loading] Bundle meta: ${JSON.stringify(bundle.meta)}`);
+        for (const tier of ['universe', 'galaxy', 'system', 'planet']) {
+          if (bundle[tier]) {
+            console.log(`[Tiered Loading]   ${tier}: ${bundle[tier].nodes?.length || 0} nodes, ${bundle[tier].edges?.length || 0} edges`);
+          }
+        }
+
+        // Build graph from universe tier only (fast: ~50 nodes)
+        graph = buildGraphFromTier(bundle.universe, 'universe');
+
+        console.log(`[Tiered Loading] Built graph with ${graph.order} nodes, ${graph.size} edges`);
+
+        // CRITICAL: Load galaxy tier immediately for edges!
+        // Universe tier has 0 edges by design, so we need galaxy tier for:
+        // 1. Visible edges from the start
+        // 2. Proper isolate identification (nodes with 0 degree)
+        console.log('[Tiered Loading] Loading galaxy tier for edges...');
+        await loadTierOnDemand('galaxy');
+        console.log(`[Tiered Loading] After galaxy: ${graph.order} nodes, ${graph.size} edges`);
+
+        // Skip ForceAtlas2 - positions are pre-computed!
+        console.log('[Tiered Loading] Using pre-computed positions, skipping ForceAtlas2');
+
+        // Recalculate isolates now that we have edges
+        // Exclude meta-nodes - they're directory aggregates, not real isolates
+        isolates = new Set();
+        graph.forEachNode((nodeId) => {
+          const attrs = graph.getNodeAttributes(nodeId);
+          if (graph.degree(nodeId) === 0 && !attrs.isMetaNode) {
+            isolates.add(nodeId);
+            graph.setNodeAttribute(nodeId, 'isolate', true);
+          } else {
+            graph.setNodeAttribute(nodeId, 'isolate', false);
+          }
+        });
+        console.log(`[Tiered Loading] Found ${isolates.size} true isolates (meta-nodes excluded)`);
+
+        // Position isolates in ring (now with proper isolate identification)
+        positionIsolateRing(graph, isolates);
+
+        // Detect communities on the small initial graph
+        detectCommunities();
+        separateCommunities(1500);  // Push communities apart moderately
+        recenterHubNodes();  // Re-center hubs after community separation
+        buildCommunityHierarchy();
+
+        // Build semantic hierarchy
+        buildDirectoryHierarchy();
+        createDirectoryMetaNodes();
+
+        // Clean up old viewer
+        if (viewer) {
+          viewer.kill();
+        }
+
+        // Reset state
+        state.selectedNodes = new Set();
+        state.hiddenNodes = new Set();
+        state.deletedNodes = new Set();
+
+        // Create Sigma renderer (same as regular initViewer)
+        const container = document.getElementById('graph');
+        container.innerHTML = '';
+
+        const SigmaConstructor = window.Sigma?.default || window.Sigma;
+        if (!SigmaConstructor) {
+          throw new Error('Sigma library not loaded');
+        }
+
+        viewer = new SigmaConstructor(graph, container, {
+          renderLabels: true,
+          renderEdgeLabels: false,
+          labelRenderedSizeThreshold: 12,  // Higher threshold - only show labels when more zoomed in
+          labelSize: 42,
+          labelFont: "'Inter', 'Segoe UI', Arial, sans-serif",
+          labelColor: { color: "#ffffff" },
+          labelWeight: "500",
+          defaultNodeColor: '#666',
+          defaultEdgeColor: '#404040',
+          defaultEdgeType: 'arrow',
+          minCameraRatio: 0.02,
+          maxCameraRatio: 12,
+          hoverRenderer: () => {},
+          // Custom cosmic node rendering with glow effect
+          defaultDrawNodeHover: (context, data, settings) => {
+            // Draw glow
+            const gradient = context.createRadialGradient(data.x, data.y, 0, data.x, data.y, data.size * 3);
+            gradient.addColorStop(0, data.color + 'ff');
+            gradient.addColorStop(0.3, data.color + '88');
+            gradient.addColorStop(1, data.color + '00');
+            context.fillStyle = gradient;
+            context.beginPath();
+            context.arc(data.x, data.y, data.size * 3, 0, Math.PI * 2);
+            context.fill();
+            // Core
+            context.fillStyle = '#ffffff';
+            context.beginPath();
+            context.arc(data.x, data.y, data.size * 0.6, 0, Math.PI * 2);
+            context.fill();
+          },
+          defaultDrawNodeLabel: (context, data, settings) => {
+            if (!data.label) return;
+
+            // Zoom-level label visibility: hide labels when zoomed out to reduce clutter
+            if (viewer) {
+              const cameraState = viewer.getCamera().getState();
+              const ratio = cameraState.ratio;  // Higher = more zoomed out
+
+              // Thresholds for label visibility - lower = labels only at higher zoom
+              const SHOW_NODE_LABELS_THRESHOLD = 0.5;   // Only show node labels when very zoomed in
+              const SHOW_HUB_LABELS_THRESHOLD = 2.0;    // Show hub/community labels at moderate zoom
+
+              const isHub = data.isHubNode || data.nodeCount > 0 || data.isAggregate;
+              if (!isHub && ratio > SHOW_NODE_LABELS_THRESHOLD) {
+                return;  // Don't draw label for regular nodes when zoomed out
+              }
+              if (isHub && ratio > SHOW_HUB_LABELS_THRESHOLD) {
+                return;  // Don't draw hub labels when very zoomed out
+              }
+            }
+
+            // Adaptive label size based on node importance
+            const isAggregate = data.isAggregate || data.nodeCount > 0;
+            const fontSize = isAggregate ? 7 : 6;  // Reduced by ~50%
+            const font = `500 ${fontSize}px 'Inter', 'Segoe UI', Arial, sans-serif`;
+
+            context.font = font;
+            const textWidth = context.measureText(data.label).width;
+            const padding = 4;
+
+            // Use pre-computed labelSide attribute (set during layout based on graph coords)
+            // This is more reliable than calculating from viewport coords at render time
+            const labelSide = data.labelSide || 'right'; // Default to right if not set
+
+            let labelX, labelY;
+            if (labelSide === 'right') {
+              // Node is on RIGHT side of graph - label extends right →
+              labelX = data.x + data.size + 5;
+            } else {
+              // Node is on LEFT side of graph - label extends left ←
+              // Position text start so the text ends near the node
+              labelX = data.x - data.size - 5 - textWidth;
+            }
+            labelY = data.y + fontSize / 3;
+
+            // Draw label background for readability
+            context.fillStyle = 'rgba(20, 24, 33, 0.85)';
+            context.beginPath();
+            const bgX = labelX - padding;
+            context.roundRect(
+              bgX,
+              labelY - fontSize + 2,
+              textWidth + padding * 2,
+              fontSize + padding,
+              3
+            );
+            context.fill();
+
+            // Draw label text (always left-aligned, position calculated above)
+            context.fillStyle = '#e8e8e8';
+            context.fillText(data.label, labelX, labelY);
+          },
+          nodeReducer: (node, data) => {
+            const isSelected = state.selectedNodes.has(node);
+            // Tier-based sizing: higher tiers (directories/files) are bigger
+            // universe (dirs) > galaxy (files) > system (classes) > planet (functions)
+            const tierSizes = {
+              'universe': 10,
+              'galaxy': 7,
+              'system': 5,
+              'planet': 3,
+            };
+            const baseSize = tierSizes[data.tier] || 4;
+            // Explicitly include labelSide to ensure it reaches the label renderer
+            const labelSide = graph.getNodeAttribute(node, 'labelSide') || 'right';
+            return {
+              ...data,
+              labelSide,
+              size: isSelected ? baseSize * 1.5 : baseSize,
+              color: isSelected ? '#ffffff' : data.color,
+              borderColor: isSelected ? data.color : undefined,
+              borderSize: isSelected ? 2 : 0,
+            };
+          },
+          edgeReducer: (edge, data) => {
+            const [src, dst] = graph.extremities(edge);
+            const isHighlighted = state.selectedNodes.has(src) || state.selectedNodes.has(dst);
+            return {
+              ...data,
+              color: isHighlighted ? '#888' : (data.color || '#404040'),
+              size: isHighlighted ? 2 : 0.5,
+            };
+          },
+        });
+
+        // Event listeners (same as regular initViewer)
+        viewer.on('clickNode', ({ node }) => toggleSelection(node));
+        viewer.on('clickStage', () => { if (state.selectedNodes.size > 0) clearSelection(); });
+        viewer.on('enterNode', ({ node }) => showNodeTooltip(node));
+        viewer.on('leaveNode', () => hideNodeTooltip());
+
+        // Camera updates - trigger lazy loading and community visualization
+        viewer.getCamera().on('updated', ({ ratio }) => {
+          const newLevel = getSemanticLevelFromRatio(ratio);
+
+          // Lazy load tiers as needed
+          if (tieredBundle) {
+            if ((newLevel === 'galaxy' || newLevel === 'system' || newLevel === 'planet') &&
+                !loadedTiers.has('galaxy')) {
+              loadTierOnDemand('galaxy');
+            }
+            if ((newLevel === 'system' || newLevel === 'planet') && !loadedTiers.has('system')) {
+              loadTierOnDemand('system');
+            }
+            if (newLevel === 'planet' && !loadedTiers.has('planet')) {
+              loadTierOnDemand('planet');
+            }
+          }
+
+          // ============================================
+          // SEA URCHIN TIER-BASED VISIBILITY
+          // Show/hide nodes based on their tier and zoom ratio
+          // Lower ratio = more zoomed in
+          // ============================================
+          graph.forEachNode((nodeId, attrs) => {
+            // Skip isolates (handled separately)
+            if (attrs.isolate) return;
+            // Skip deleted/hidden by user
+            if (state.deletedNodes?.has(nodeId) || state.hiddenNodes?.has(nodeId)) return;
+
+            const tier = attrs.tier || 'universe';
+            let visible = false;
+
+            // Seamless tier-based visibility
+            // Thresholds create smooth transitions as you zoom in
+            if (tier === 'universe') {
+              // Universe tier (directories/modules) - always visible
+              visible = true;
+            } else if (tier === 'galaxy') {
+              // Galaxy tier (files) - appear when zooming in past ratio 4.0
+              visible = ratio < 4.0;
+            } else if (tier === 'system') {
+              // System tier (classes) - appear when zooming in past ratio 1.5
+              visible = ratio < 1.5;
+            } else { // planet
+              // Planet tier (methods/functions) - appear when very zoomed in
+              visible = ratio < 0.6;
+            }
+
+            graph.setNodeAttribute(nodeId, 'hidden', !visible);
+          });
+
+          // Update edge visibility - show edges only when both endpoints visible
+          graph.forEachEdge((edgeId, attrs, src, dst) => {
+            const srcHidden = graph.getNodeAttribute(src, 'hidden');
+            const dstHidden = graph.getNodeAttribute(dst, 'hidden');
+            graph.setEdgeAttribute(edgeId, 'hidden', srcHidden || dstHidden);
+          });
+
+          // Auto-expand communities based on zoom level
+          // When zooming in, find and expand the community at the view center
+          if (communityHierarchy && ratio < 3.0) {
+            try {
+              // Get the center of the current view in graph coordinates
+              const container = viewer.getContainer();
+              const viewCenter = viewer.viewportToGraph({
+                x: container.clientWidth / 2,
+                y: container.clientHeight / 2
+              });
+
+              // Determine which level to expand based on zoom
+              if (ratio < 0.8 && ratio > 0.3) {
+                // System level - expand nearest level 2 community to show level 1
+                const nearest = findNearestCommunity(viewCenter, 2);
+                if (nearest) {
+                  expandCommunity(nearest.id, 2);
+                }
+              } else if (ratio <= 0.3) {
+                // Planet level - also expand level 1 communities
+                const nearestL2 = findNearestCommunity(viewCenter, 2);
+                if (nearestL2) {
+                  expandCommunity(nearestL2.id, 2);
+                  // Find and expand the nearest level 1 community within this super-community
+                  const nearestL1 = findNearestCommunity(viewCenter, 1);
+                  if (nearestL1) {
+                    expandCommunity(nearestL1.id, 1);
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn('[Community Zoom] Error during auto-expand:', e);
+            }
+          }
+
+          // Update community visualization on camera changes
+          renderCommunityBackgrounds();
+          renderCosmicGlow();
+          renderCommunityLabels();
+        });
+
+        // Fit view to graph - start zoomed out to show universe tier
+        if (viewer) {
+          // Calculate proper camera to fit graph bounds
+          let minX = Infinity, maxX = -Infinity;
+          let minY = Infinity, maxY = -Infinity;
+          graph.forEachNode((n, attrs) => {
+            if (!attrs.hidden && attrs.x !== undefined) {
+              minX = Math.min(minX, attrs.x);
+              maxX = Math.max(maxX, attrs.x);
+              minY = Math.min(minY, attrs.y);
+              maxY = Math.max(maxY, attrs.y);
+            }
+          });
+
+          if (isFinite(minX)) {
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            const graphWidth = maxX - minX;
+            const graphHeight = maxY - minY;
+
+            // Convert graph center to normalized coords and set appropriate ratio
+            const container = viewer.getContainer();
+            const containerRatio = container.clientWidth / container.clientHeight;
+            const graphRatio = graphWidth / graphHeight;
+
+            // Calculate ratio to fit graph with some padding
+            const padding = 1.3;  // 30% padding
+            const ratio = Math.max(graphWidth / container.clientWidth, graphHeight / container.clientHeight) * padding;
+
+            // Use graph center converted to viewport coordinates
+            viewer.getCamera().setState({
+              x: 0.5,  // Center in viewport
+              y: 0.5,
+              ratio: Math.max(4, ratio)  // At least ratio 4 for overview
+            });
+
+            console.log(`[Camera] Fit to graph: center=(${centerX.toFixed(0)}, ${centerY.toFixed(0)}), size=${graphWidth.toFixed(0)}x${graphHeight.toFixed(0)}, ratio=${ratio.toFixed(2)}`);
+          } else {
+            viewer.getCamera().setState({ x: 0.5, y: 0.5, ratio: 6.0 });
+          }
+        }
+
+        // Note: For tiered bundles, tier-based visibility is handled by the camera update event
+        // The setState above triggers the camera 'updated' event which applies tier visibility
+        // We don't call updateSemanticVisibility here as that uses kind-based filtering
+
+        // Render initial community visualization (cosmic backgrounds, glow, and labels)
+        renderCommunityBackgrounds();
+        renderCosmicGlow();
+        renderCommunityLabels();
+
+        const elapsed = (performance.now() - startTime).toFixed(0);
+        console.log(`[Tiered Loading] ✓ Viewer initialized in ${elapsed}ms (universe tier only)`);
+        showToast(`Loaded ${graph.order} nodes in ${elapsed}ms (lazy loading enabled)`, 3000);
+
+      } catch (err) {
+        console.error('[Tiered Loading] Error:', err);
+        showToast(`Error: ${err.message}`, 5000);
+      } finally {
+        setLoading(false);
+        updateStatsDisplay();
+      }
     }
 
     // ============================================
@@ -1035,7 +1936,14 @@
 
       try {
         if (window.graphologyLibrary?.communitiesLouvain) {
-          window.graphologyLibrary.communitiesLouvain.assign(graph);
+          // Use lower resolution for sparse graphs to get fewer, larger communities
+          // Default resolution=1 creates too many micro-communities
+          // Lower resolution = fewer, larger communities
+          const edgeDensity = graph.size / Math.max(1, graph.order);
+          const resolution = edgeDensity < 1 ? 0.3 : 0.7;  // Lower for sparse graphs
+          console.log(`[Community Detection] Using resolution ${resolution} (edge density: ${edgeDensity.toFixed(2)})`);
+
+          window.graphologyLibrary.communitiesLouvain.assign(graph, { resolution });
 
           // Count communities for verification
           const communities = new Set();
@@ -1046,6 +1954,9 @@
           });
 
           console.log(`[Community Detection] ✓ Found ${communities.size} communities`);
+
+          // Apply community colors to all nodes
+          applyCommunityColors();
         } else {
           console.error('[Community Detection] ✗ graphologyLibrary.communitiesLouvain not available');
           console.error('Available globals:', Object.keys(window).filter(k => k.includes('graph')));
@@ -1053,6 +1964,931 @@
       } catch (err) {
         console.error('[Community Detection] ✗ Failed:', err);
         showToast('Community detection failed: ' + err.message, 5000);
+      }
+    }
+
+    /**
+     * Apply colors to all nodes based on their community assignment.
+     */
+    function applyCommunityColors() {
+      if (!graph) return;
+
+      graph.forEachNode((node, attrs) => {
+        if (attrs.community !== undefined) {
+          graph.setNodeAttribute(node, 'color', getCommunityColor(attrs.community));
+        }
+      });
+
+      console.log('[Community Colors] ✓ Applied colors to nodes');
+    }
+
+    /**
+     * Resolve collisions between communities using iterative repulsion.
+     * Treats each community as a circle and pushes overlapping ones apart.
+     * @param {Array} communities - Array of [commId, data] entries
+     * @param {number} iterations - Max iterations (default: 50)
+     */
+    function resolveCommunityCollisions(communities, iterations = 100) {
+      if (communities.length < 2) return;
+
+      const BUFFER = 300;  // Extra padding between communities
+      const CENTERING_STRENGTH = 0.02;  // Weak pull toward center (reduced to allow more spread)
+      let totalMoved = 0;
+
+      for (let iter = 0; iter < iterations; iter++) {
+        let moved = false;
+
+        // Step 1: Resolve collisions - push overlapping communities apart
+        for (let i = 0; i < communities.length; i++) {
+          const [, dataA] = communities[i];
+          const radiusA = dataA.spread + BUFFER;
+
+          for (let j = i + 1; j < communities.length; j++) {
+            const [, dataB] = communities[j];
+            const radiusB = dataB.spread + BUFFER;
+
+            const dx = dataB.centroidX - dataA.centroidX;
+            const dy = dataB.centroidY - dataA.centroidY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const minDist = radiusA + radiusB;
+
+            if (dist < minDist && dist > 0) {
+              // Push apart by half the overlap each
+              const overlap = (minDist - dist) / 2;
+              const nx = dx / dist;
+              const ny = dy / dist;
+
+              dataA.centroidX -= nx * overlap;
+              dataA.centroidY -= ny * overlap;
+              dataB.centroidX += nx * overlap;
+              dataB.centroidY += ny * overlap;
+              moved = true;
+              totalMoved++;
+            }
+          }
+        }
+
+        // Step 2: Apply weak centering force to prevent outward drift
+        communities.forEach(([, data]) => {
+          data.centroidX *= (1 - CENTERING_STRENGTH);
+          data.centroidY *= (1 - CENTERING_STRENGTH);
+        });
+
+        if (!moved) {
+          console.log(`[Collision Resolution] Converged after ${iter + 1} iterations (${totalMoved} adjustments)`);
+          break;
+        }
+      }
+
+      // Apply centroid changes to all nodes
+      communities.forEach(([commId, data]) => {
+        // Calculate how much the centroid moved from current node positions
+        // Get actual current centroid from node positions
+        let sumX = 0, sumY = 0;
+        data.nodes.forEach(node => {
+          const attrs = graph.getNodeAttributes(node.id);
+          sumX += attrs.x;
+          sumY += attrs.y;
+        });
+        const currentCX = sumX / data.nodes.length;
+        const currentCY = sumY / data.nodes.length;
+
+        // Offset from current to desired
+        const offsetX = data.centroidX - currentCX;
+        const offsetY = data.centroidY - currentCY;
+
+        if (Math.abs(offsetX) > 0.01 || Math.abs(offsetY) > 0.01) {
+          data.nodes.forEach(node => {
+            const attrs = graph.getNodeAttributes(node.id);
+            graph.setNodeAttribute(node.id, 'x', attrs.x + offsetX);
+            graph.setNodeAttribute(node.id, 'y', attrs.y + offsetY);
+          });
+        }
+      });
+    }
+
+    /**
+     * Apply circular hub-and-spoke layout to nodes within a community.
+     * Positions hub node at center, other nodes in concentric rings.
+     * @param {Object} data - Community data with {nodes, centroidX, centroidY, count}
+     * @param {number} targetRadius - Target radius for the community
+     */
+    function applyCircularCommunityLayout(data, targetRadius) {
+      if (!graph || data.nodes.length === 0) return;
+
+      // Find hub node (highest intra-community connectivity)
+      const nodeIdSet = new Set(data.nodes.map(n => n.id));
+      let hubNodeId = null;
+      let maxIntraDegree = 0;
+
+      data.nodes.forEach(node => {
+        let intraDegree = 0;
+        graph.forEachEdge(node.id, (edge, attrs, src, dst) => {
+          if (nodeIdSet.has(src) && nodeIdSet.has(dst)) {
+            intraDegree++;
+          }
+        });
+        if (intraDegree > maxIntraDegree) {
+          maxIntraDegree = intraDegree;
+          hubNodeId = node.id;
+        }
+      });
+
+      // If no hub found, use first node
+      if (!hubNodeId) hubNodeId = data.nodes[0].id;
+
+      // Position hub at centroid
+      graph.setNodeAttribute(hubNodeId, 'x', data.centroidX);
+      graph.setNodeAttribute(hubNodeId, 'y', data.centroidY);
+      graph.setNodeAttribute(hubNodeId, 'isHubNode', true);
+
+      // Get non-hub nodes
+      const otherNodes = data.nodes.filter(n => n.id !== hubNodeId);
+      if (otherNodes.length === 0) return;
+
+      // Arrange in concentric rings using golden angle
+      const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+      const nodesPerRing = Math.ceil(Math.sqrt(otherNodes.length) * 2);
+      const ringSpacing = targetRadius / Math.ceil(otherNodes.length / nodesPerRing);
+
+      otherNodes.forEach((node, i) => {
+        const ring = Math.floor(i / nodesPerRing) + 1;
+        const ringRadius = ring * ringSpacing;
+
+        // Use golden angle for even distribution
+        const angle = i * goldenAngle;
+
+        const x = data.centroidX + ringRadius * Math.cos(angle);
+        const y = data.centroidY + ringRadius * Math.sin(angle);
+
+        graph.setNodeAttribute(node.id, 'x', x);
+        graph.setNodeAttribute(node.id, 'y', y);
+      });
+
+      // Update data.spread to reflect actual community radius (for collision detection)
+      data.spread = targetRadius;
+    }
+
+    /**
+     * Separate communities by compacting them and distributing radially.
+     * 1. Compact each community (scale nodes toward centroid)
+     * 2. Distribute communities in a golden angle spiral
+     * @param {number} separationFactor - Base radius for community placement (default: 800)
+     */
+    function separateCommunities(separationFactor = 800) {
+      if (!graph) return;
+
+      console.log('[Community Separation] Starting compact + radial distribution...');
+
+      // Group nodes by community
+      const communityNodes = new Map();
+      graph.forEachNode((nodeId, attrs) => {
+        if (attrs.isolate) return; // Skip isolates
+        const comm = attrs.community ?? attrs.communityLevel1 ?? 0;
+        if (!communityNodes.has(comm)) {
+          communityNodes.set(comm, []);
+        }
+        communityNodes.get(comm).push({ id: nodeId, x: attrs.x, y: attrs.y });
+      });
+
+      if (communityNodes.size < 2) {
+        console.log('[Community Separation] Only 1 community, skipping');
+        return;
+      }
+
+      // Calculate each community's centroid and spread
+      const communityData = new Map();
+      communityNodes.forEach((nodes, commId) => {
+        const cx = nodes.reduce((sum, n) => sum + n.x, 0) / nodes.length;
+        const cy = nodes.reduce((sum, n) => sum + n.y, 0) / nodes.length;
+
+        // Calculate max distance from centroid (community spread)
+        let maxDist = 0;
+        nodes.forEach(n => {
+          const dist = Math.sqrt((n.x - cx) ** 2 + (n.y - cy) ** 2);
+          maxDist = Math.max(maxDist, dist);
+        });
+
+        communityData.set(commId, {
+          centroidX: cx,
+          centroidY: cy,
+          spread: maxDist,
+          count: nodes.length,
+          nodes: nodes
+        });
+      });
+
+      // Filter out very small communities - only separate communities with meaningful size
+      // Small communities (< 10 nodes) stay near center rather than cluttering the spiral
+      const MIN_COMMUNITY_SIZE = 10;
+      const significantCommunities = Array.from(communityData.entries())
+        .filter(([, data]) => data.count >= MIN_COMMUNITY_SIZE);
+
+      const smallCommunities = Array.from(communityData.entries())
+        .filter(([, data]) => data.count < MIN_COMMUNITY_SIZE);
+
+      console.log(`[Community Separation] ${significantCommunities.length} significant communities (>= ${MIN_COMMUNITY_SIZE} nodes), ${smallCommunities.length} small communities`);
+
+      // Sort significant communities by size ASCENDING (smallest first)
+      // Smaller communities go near center, larger ones further out (they need more space)
+      const sortedCommunities = significantCommunities
+        .sort((a, b) => a[1].count - b[1].count);  // ASCENDING: smallest first
+
+      // Log community size distribution for diagnostics
+      const sizes = sortedCommunities.map(([, d]) => d.count);
+      const maxSize = Math.max(...sizes, 0);
+      const minSize = Math.min(...sizes, 0);
+      console.log(`[Community Sizes] Range: ${minSize}-${maxSize}, Top 5: ${sizes.slice(-5).reverse().join(', ')}`);
+
+      const numCommunities = sortedCommunities.length;
+      const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // ~137.5 degrees
+
+      // Base radius for compacted communities
+      const baseCompactRadius = 200;
+
+      sortedCommunities.forEach(([commId, data], index) => {
+        // Step 1: Apply circular hub-and-spoke layout to community
+        const targetRadius = baseCompactRadius + Math.sqrt(data.count) * 30;
+        applyCircularCommunityLayout(data, targetRadius);
+
+        // Step 2: Calculate new community position (golden angle spiral)
+        const angle = index * goldenAngle;
+
+        // Radius based on index: smallest communities at center, largest at edge
+        // Use sqrt for uniform area distribution (area = πr²)
+        // First community starts at center; collision resolution will spread them out
+        const sizeRank = index / Math.max(1, numCommunities - 1);  // 0 to 1
+        const radius = separationFactor * Math.sqrt(sizeRank) * 0.8;
+
+        // New centroid position
+        const newCentroidX = radius * Math.cos(angle);
+        const newCentroidY = radius * Math.sin(angle);
+
+        // Step 3: Move all nodes to new position
+        const offsetX = newCentroidX - data.centroidX;
+        const offsetY = newCentroidY - data.centroidY;
+
+        data.nodes.forEach(node => {
+          const nodeAttrs = graph.getNodeAttributes(node.id);
+          graph.setNodeAttribute(node.id, 'x', nodeAttrs.x + offsetX);
+          graph.setNodeAttribute(node.id, 'y', nodeAttrs.y + offsetY);
+        });
+
+        // Update centroid to new position for collision detection
+        data.centroidX = newCentroidX;
+        data.centroidY = newCentroidY;
+        // Update spread to compacted radius
+        data.spread = targetRadius;
+      });
+
+      // Resolve collisions between significant communities
+      resolveCommunityCollisions(sortedCommunities);
+
+      // Place small communities in OUTER ring (beyond significant communities)
+      // This follows best practices: loosely connected content goes to periphery
+      if (smallCommunities.length > 0) {
+        const innerRadius = separationFactor * 1.5;  // Beyond main communities
+        const ringWidth = separationFactor * 0.4;
+        smallCommunities.forEach(([commId, data], index) => {
+          // Apply circular layout within small community too
+          const smallTargetRadius = baseCompactRadius + Math.sqrt(data.count) * 20;
+          applyCircularCommunityLayout(data, smallTargetRadius);
+
+          // Position in outer ring
+          const angle = index * goldenAngle;
+          const r = innerRadius + Math.random() * ringWidth;
+          const newCentroidX = r * Math.cos(angle);
+          const newCentroidY = r * Math.sin(angle);
+
+          const offsetX = newCentroidX - data.centroidX;
+          const offsetY = newCentroidY - data.centroidY;
+
+          data.nodes.forEach(node => {
+            const nodeAttrs = graph.getNodeAttributes(node.id);
+            graph.setNodeAttribute(node.id, 'x', nodeAttrs.x + offsetX);
+            graph.setNodeAttribute(node.id, 'y', nodeAttrs.y + offsetY);
+          });
+        });
+        console.log(`[Community Separation] Placed ${smallCommunities.length} small communities in outer ring`);
+      }
+
+      const totalNodes = Array.from(communityData.values()).reduce((sum, d) => sum + d.count, 0);
+      console.log(`[Community Separation] ✓ Compacted and distributed ${totalNodes} nodes across ${numCommunities} communities`);
+
+      // Clamp outlier nodes - bring any nodes > MAX_DIST back toward center
+      // Scale MAX_DIST based on separation factor to avoid clamping legitimate spread
+      const MAX_DIST = Math.max(4000, separationFactor * 3);
+      let clampedCount = 0;
+      graph.forEachNode((nodeId, attrs) => {
+        const dist = Math.sqrt(attrs.x ** 2 + attrs.y ** 2);
+        if (dist > MAX_DIST) {
+          // Scale position to be at MAX_DIST from center
+          const scale = MAX_DIST / dist;
+          graph.setNodeAttribute(nodeId, 'x', attrs.x * scale);
+          graph.setNodeAttribute(nodeId, 'y', attrs.y * scale);
+          clampedCount++;
+        }
+      });
+      if (clampedCount > 0) {
+        console.log(`[Community Separation] Clamped ${clampedCount} outlier nodes to max distance ${MAX_DIST}`);
+      }
+
+      // Set label sides after initial layout
+      updateAllLabelSides();
+    }
+
+    /**
+     * Set labelSide attribute for all nodes based on their graph coordinates.
+     * Called after layout changes to ensure radial label positioning.
+     */
+    function updateAllLabelSides() {
+      if (!graph) return;
+      let leftCount = 0, rightCount = 0;
+      graph.forEachNode((nodeId, attrs) => {
+        // Use graph coordinates (x, y) relative to center (0, 0)
+        // Nodes on RIGHT side of graph center get labels extending right
+        // Nodes on LEFT side get labels extending left (ending at node)
+        const angle = Math.atan2(attrs.y, attrs.x);
+        const normAngle = ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+        // Right side: angle < π/2 or angle > 3π/2
+        const isRightSide = normAngle < Math.PI / 2 || normAngle > 3 * Math.PI / 2;
+        graph.setNodeAttribute(nodeId, 'labelSide', isRightSide ? 'right' : 'left');
+        if (isRightSide) rightCount++; else leftCount++;
+      });
+      console.log(`[Label Layout] Updated labelSide: ${leftCount} left, ${rightCount} right`);
+    }
+
+    // ============================================
+    // Hierarchical Community Structure (Communities of Communities)
+    // ============================================
+
+    // Track community hierarchy and expanded state
+    let communityHierarchy = null;
+    let expandedCommunities = new Set(); // Set of "level:communityId" strings
+
+    /**
+     * Build hierarchical community structure using multi-level Louvain.
+     * Creates nested communities: Level 2 (super-communities) → Level 1 (communities) → Individual nodes
+     */
+    function buildCommunityHierarchy() {
+      if (!graph) return;
+
+      console.log('[Community Hierarchy] Building multi-level structure...');
+
+      // Level 1: Standard Louvain on original graph (already run by detectCommunities)
+      // Build mapping of level 1 communities
+      const level1Communities = new Map(); // communityId -> {nodes: [], centroid: {x, y}}
+
+      graph.forEachNode((node, attrs) => {
+        const comm = attrs.community;
+        if (comm === undefined) return;
+
+        if (!level1Communities.has(comm)) {
+          level1Communities.set(comm, { id: comm, nodes: [], centroid: {x: 0, y: 0} });
+        }
+        level1Communities.get(comm).nodes.push(node);
+      });
+
+      // Calculate centroids for level 1 communities
+      level1Communities.forEach((data, comm) => {
+        if (data.nodes.length === 0) return;
+        let cx = 0, cy = 0;
+        data.nodes.forEach(node => {
+          cx += graph.getNodeAttribute(node, 'x') || 0;
+          cy += graph.getNodeAttribute(node, 'y') || 0;
+        });
+        data.centroid = { x: cx / data.nodes.length, y: cy / data.nodes.length };
+      });
+
+      console.log(`[Community Hierarchy] Level 1: ${level1Communities.size} communities`);
+
+      // Create meta-graph for level 2 (each node = a level 1 community)
+      const metaGraph = new graphology.Graph();
+
+      level1Communities.forEach((data, comm) => {
+        metaGraph.addNode(comm, {
+          size: data.nodes.length,
+          x: data.centroid.x,
+          y: data.centroid.y,
+          community: comm  // Initially, each is its own community
+        });
+      });
+
+      // Add edges between communities based on cross-community edges in original graph
+      graph.forEachEdge((edge, attrs, src, dst) => {
+        const srcComm = graph.getNodeAttribute(src, 'community');
+        const dstComm = graph.getNodeAttribute(dst, 'community');
+        if (srcComm !== dstComm && srcComm !== undefined && dstComm !== undefined) {
+          if (metaGraph.hasNode(srcComm) && metaGraph.hasNode(dstComm)) {
+            if (!metaGraph.hasEdge(srcComm, dstComm)) {
+              try {
+                metaGraph.addEdge(srcComm, dstComm, { weight: 1 });
+              } catch (e) {
+                // Ignore duplicate edge errors
+              }
+            }
+          }
+        }
+      });
+
+      console.log(`[Community Hierarchy] Meta-graph: ${metaGraph.order} nodes, ${metaGraph.size} edges`);
+
+      // Level 2: Run Louvain on meta-graph to find super-communities
+      let level2Count = 0;
+      if (metaGraph.order > 1) {
+        try {
+          graphologyLibrary.communitiesLouvain.assign(metaGraph);
+
+          // Count level 2 communities
+          const level2Set = new Set();
+          metaGraph.forEachNode((commId, attrs) => {
+            if (attrs.community !== undefined) {
+              level2Set.add(attrs.community);
+            }
+          });
+          level2Count = level2Set.size;
+        } catch (e) {
+          console.warn('[Community Hierarchy] Level 2 Louvain failed:', e);
+        }
+      }
+
+      console.log(`[Community Hierarchy] Level 2: ${level2Count} super-communities`);
+
+      // Propagate level 2 communities back to original nodes
+      graph.forEachNode((node, attrs) => {
+        const level1Comm = attrs.community;
+        if (level1Comm === undefined) return;
+
+        if (metaGraph.hasNode(level1Comm)) {
+          const level2Comm = metaGraph.getNodeAttribute(level1Comm, 'community');
+          graph.setNodeAttribute(node, 'communityLevel1', level1Comm);
+          graph.setNodeAttribute(node, 'communityLevel2', level2Comm !== undefined ? level2Comm : level1Comm);
+        }
+      });
+
+      // Build level 2 community data
+      const level2Communities = new Map();
+      graph.forEachNode((node, attrs) => {
+        const l2 = attrs.communityLevel2;
+        if (l2 === undefined) return;
+
+        if (!level2Communities.has(l2)) {
+          level2Communities.set(l2, { id: l2, nodes: [], level1Communities: new Set(), centroid: {x: 0, y: 0} });
+        }
+        level2Communities.get(l2).nodes.push(node);
+        level2Communities.get(l2).level1Communities.add(attrs.communityLevel1);
+      });
+
+      // Calculate centroids for level 2 communities
+      level2Communities.forEach((data) => {
+        if (data.nodes.length === 0) return;
+        let cx = 0, cy = 0;
+        data.nodes.forEach(node => {
+          cx += graph.getNodeAttribute(node, 'x') || 0;
+          cy += graph.getNodeAttribute(node, 'y') || 0;
+        });
+        data.centroid = { x: cx / data.nodes.length, y: cy / data.nodes.length };
+      });
+
+      // Store hierarchy for navigation
+      communityHierarchy = {
+        level1: level1Communities,
+        level2: level2Communities,
+        metaGraph: metaGraph
+      };
+
+      console.log(`[Community Hierarchy] ✓ Built hierarchy: ${level2Count} super-communities → ${level1Communities.size} communities`);
+
+      return communityHierarchy;
+    }
+
+    /**
+     * Get community data at a specific hierarchy level.
+     * @param {number} level - 1 for fine-grained, 2 for super-communities
+     */
+    function getCommunityDataAtLevel(level) {
+      if (!communityHierarchy) return new Map();
+
+      if (level === 2) {
+        return communityHierarchy.level2;
+      } else {
+        return communityHierarchy.level1;
+      }
+    }
+
+    /**
+     * Expand a community to reveal its internal structure.
+     * @param {number} communityId - The community ID to expand
+     * @param {number} level - The hierarchy level (1 or 2)
+     */
+    function expandCommunity(communityId, level) {
+      const key = `${level}:${communityId}`;
+      if (expandedCommunities.has(key)) return; // Already expanded
+
+      expandedCommunities.add(key);
+      console.log(`[Community Expand] Expanding community ${communityId} at level ${level}`);
+
+      if (level === 2) {
+        // Expanding a super-community: show its level 1 communities
+        graph.forEachNode((node, attrs) => {
+          if (attrs.communityLevel2 === communityId) {
+            // Make nodes in this super-community visible
+            graph.setNodeAttribute(node, 'hidden', false);
+          }
+        });
+      } else if (level === 1) {
+        // Expanding a level 1 community: show individual nodes
+        graph.forEachNode((node, attrs) => {
+          if (attrs.communityLevel1 === communityId) {
+            graph.setNodeAttribute(node, 'hidden', false);
+          }
+        });
+      }
+
+      // Re-render community visualization
+      renderCommunityBackgrounds();
+      renderCosmicGlow();
+      renderCommunityLabels();
+      if (viewer) viewer.refresh();
+    }
+
+    /**
+     * Collapse a community to hide its internals.
+     * @param {number} communityId - The community ID to collapse
+     * @param {number} level - The hierarchy level (1 or 2)
+     */
+    function collapseCommunity(communityId, level) {
+      const key = `${level}:${communityId}`;
+      if (!expandedCommunities.has(key)) return; // Not expanded
+
+      expandedCommunities.delete(key);
+      console.log(`[Community Collapse] Collapsing community ${communityId} at level ${level}`);
+
+      // Hide nodes belonging to this community (unless they're visible from another expansion)
+      graph.forEachNode((node, attrs) => {
+        const nodeLevel = level === 2 ? attrs.communityLevel2 : attrs.communityLevel1;
+        if (nodeLevel === communityId) {
+          // Check if any parent community is still expanded
+          let stillVisible = false;
+          if (level === 1 && attrs.communityLevel2 !== undefined) {
+            // Check if parent super-community is expanded
+            stillVisible = expandedCommunities.has(`2:${attrs.communityLevel2}`);
+          }
+          if (!stillVisible) {
+            graph.setNodeAttribute(node, 'hidden', true);
+          }
+        }
+      });
+
+      // Re-render community visualization
+      renderCommunityBackgrounds();
+      renderCosmicGlow();
+      renderCommunityLabels();
+      if (viewer) viewer.refresh();
+    }
+
+    /**
+     * Find the nearest community to a graph coordinate.
+     * @param {Object} point - {x, y} in graph coordinates
+     * @param {number} level - Hierarchy level to search
+     */
+    function findNearestCommunity(point, level) {
+      const communities = getCommunityDataAtLevel(level);
+      if (!communities || communities.size === 0) return null;
+
+      let nearest = null;
+      let minDist = Infinity;
+
+      communities.forEach((comm, id) => {
+        const dist = Math.sqrt(
+          Math.pow(comm.centroid.x - point.x, 2) +
+          Math.pow(comm.centroid.y - point.y, 2)
+        );
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = { id, ...comm };
+        }
+      });
+
+      return nearest;
+    }
+
+    /**
+     * Get the current view level based on what's expanded.
+     * Returns: 'super' (level 2 view), 'community' (level 1 view), or 'detail' (all nodes)
+     */
+    function getCurrentViewLevel() {
+      // Check how many communities are expanded at each level
+      let level2Expanded = 0;
+      let level1Expanded = 0;
+
+      expandedCommunities.forEach(key => {
+        const [level] = key.split(':');
+        if (level === '2') level2Expanded++;
+        else if (level === '1') level1Expanded++;
+      });
+
+      if (level1Expanded > 0) return 'detail';
+      if (level2Expanded > 0) return 'community';
+      return 'super';
+    }
+
+    // ============================================
+    // Semantic Hierarchical Zoom (Universe Navigation)
+    // ============================================
+
+    /**
+     * Build directory hierarchy from graph file paths.
+     * Groups nodes by their directory structure, auto-detecting the repo root.
+     */
+    function buildDirectoryHierarchy() {
+      if (!graph) return new Map();
+
+      // First pass: collect all file paths to find common prefix (repo root)
+      const allPaths = [];
+      graph.forEachNode((id, attrs) => {
+        if (attrs.file) allPaths.push(attrs.file);
+      });
+
+      // Find longest common prefix to detect repo root
+      let commonPrefix = '';
+      if (allPaths.length > 0) {
+        const splitPaths = allPaths.map(p => p.split('/').filter(s => s));
+        const minLen = Math.min(...splitPaths.map(p => p.length));
+
+        const commonParts = [];
+        for (let i = 0; i < minLen - 1; i++) {  // -1 to leave at least filename
+          const segment = splitPaths[0][i];
+          if (splitPaths.every(p => p[i] === segment)) {
+            commonParts.push(segment);
+          } else {
+            break;
+          }
+        }
+        commonPrefix = commonParts.join('/');
+      }
+
+      console.log(`[Semantic Zoom] Detected repo root: ${commonPrefix || '(none)'}`);
+
+      const dirs = new Map();  // path -> { nodes: [], label, x, y }
+
+      graph.forEachNode((id, attrs) => {
+        const filePath = attrs.file || '';
+        let parts = filePath.split('/').filter(p => p && !p.startsWith('.'));
+
+        if (parts.length === 0) return;
+
+        // Remove common prefix to get relative path
+        if (commonPrefix) {
+          const prefixParts = commonPrefix.split('/');
+          if (parts.slice(0, prefixParts.length).join('/') === commonPrefix) {
+            parts = parts.slice(prefixParts.length);
+          }
+        }
+
+        if (parts.length < 2) return;  // Need at least dir + file
+
+        // Get directory (all but filename), use first 2-3 segments
+        const dirParts = parts.slice(0, -1);
+        const dirPath = dirParts.slice(0, 3).join('/');
+
+        if (!dirPath) return;
+
+        if (!dirs.has(dirPath)) {
+          dirs.set(dirPath, {
+            path: dirPath,
+            label: dirParts.slice(-2).join('/') || dirPath,
+            nodes: [],
+            x: 0, y: 0
+          });
+        }
+        dirs.get(dirPath).nodes.push(id);
+      });
+
+      // Calculate centroids for each directory (excluding extreme outliers)
+      const MAX_CONTRIBUTION_DIST = 3000;  // Ignore nodes beyond this when calculating centroid
+      dirs.forEach((dir) => {
+        if (dir.nodes.length === 0) return;
+
+        let cx = 0, cy = 0, count = 0;
+        dir.nodes.forEach(id => {
+          const x = graph.getNodeAttribute(id, 'x') || 0;
+          const y = graph.getNodeAttribute(id, 'y') || 0;
+          const dist = Math.sqrt(x * x + y * y);
+          // Only include nodes within reasonable distance when calculating centroid
+          if (dist <= MAX_CONTRIBUTION_DIST) {
+            cx += x;
+            cy += y;
+            count++;
+          }
+        });
+        if (count > 0) {
+          dir.x = cx / count;
+          dir.y = cy / count;
+        } else {
+          // All nodes are outliers, place directory at center
+          dir.x = 0;
+          dir.y = 0;
+        }
+
+        // Clamp directory position to MAX_DIST
+        const dirDist = Math.sqrt(dir.x * dir.x + dir.y * dir.y);
+        if (dirDist > MAX_CONTRIBUTION_DIST) {
+          const scale = MAX_CONTRIBUTION_DIST / dirDist;
+          dir.x *= scale;
+          dir.y *= scale;
+        }
+      });
+
+      console.log(`[Semantic Zoom] Found ${dirs.size} directories`);
+      directoryHierarchy = dirs;
+      return dirs;
+    }
+
+    /**
+     * Create directory meta-nodes for universe-level view.
+     */
+    function createDirectoryMetaNodes() {
+      if (!graph || !directoryHierarchy) return;
+
+      // Remove existing meta-nodes
+      directoryMetaNodes.forEach((metaId) => {
+        if (graph.hasNode(metaId)) {
+          graph.dropNode(metaId);
+        }
+      });
+      directoryMetaNodes.clear();
+
+      directoryHierarchy.forEach((dir, path) => {
+        if (dir.nodes.length < 2) return;  // Only create meta-nodes for directories with multiple nodes
+
+        const metaId = `dir:${path}`;
+
+        // Add meta-node to graph
+        graph.addNode(metaId, {
+          label: dir.label,
+          kind: 'directory',
+          x: dir.x,
+          y: dir.y,
+          size: Math.sqrt(dir.nodes.length) * 3,
+          color: '#4a9eff',
+          isMetaNode: true,
+          memberNodes: dir.nodes,
+          hidden: true  // Start hidden, shown at universe level
+        });
+
+        directoryMetaNodes.set(path, metaId);
+      });
+
+      console.log(`[Semantic Zoom] Created ${directoryMetaNodes.size} directory meta-nodes`);
+    }
+
+    /**
+     * Get semantic zoom level from camera ratio.
+     */
+    function getSemanticLevelFromRatio(ratio) {
+      if (ratio > SEMANTIC_LEVELS.universe) return 'universe';
+      if (ratio > SEMANTIC_LEVELS.galaxy) return 'galaxy';
+      if (ratio > SEMANTIC_LEVELS.system) return 'system';
+      return 'planet';
+    }
+
+    /**
+     * Map node kinds to minimum visibility level.
+     */
+    function getKindMinLevel(kind) {
+      const map = {
+        // Universe level - directories
+        'directory': 'universe',
+
+        // Galaxy level - modules and imports/exports
+        'module': 'galaxy',
+        'namespace': 'galaxy',
+        'package': 'galaxy',
+        'import_statement': 'galaxy',
+        'import_from_statement': 'galaxy',
+        'export_statement': 'galaxy',
+        'use_declaration': 'galaxy',
+        'mod_item': 'galaxy',
+
+        // System level - classes and functions
+        'class': 'system',
+        'class_declaration': 'system',
+        'class_definition': 'system',
+        'interface': 'system',
+        'trait': 'system',
+        'struct': 'system',
+        'struct_item': 'system',
+        'enum': 'system',
+        'enum_item': 'system',
+        'impl': 'system',
+        'impl_item': 'system',
+        'trait_item': 'system',
+        'function': 'system',
+        'function_declaration': 'system',
+        'function_definition': 'system',
+        'function_item': 'system',
+        'arrow_function': 'system',
+        'function_expression': 'system',
+        'decorated_definition': 'system',
+
+        // Planet level - methods and variables
+        'method': 'planet',
+        'method_definition': 'planet',
+        'constructor': 'planet',
+        'field': 'planet',
+        'property': 'planet',
+        'variable': 'planet',
+        'variable_declarator': 'planet',
+        'lexical_declaration': 'planet',
+        'assignment': 'planet',
+        'assignment_expression': 'planet',
+        'let_declaration': 'planet',
+        'const_item': 'planet',
+        'parameter': 'planet'
+      };
+      return map[kind] || 'planet';
+    }
+
+    /**
+     * Check if a node should be visible at the current semantic level.
+     */
+    function shouldShowAtSemanticLevel(nodeAttrs, currentLevel, nodeDegree) {
+      const levels = ['universe', 'galaxy', 'system', 'planet'];
+      const nodeMinLevel = getKindMinLevel(nodeAttrs.kind);
+      const nodeIdx = levels.indexOf(nodeMinLevel);
+      const currentIdx = levels.indexOf(currentLevel);
+
+      // Meta-nodes only visible at universe/galaxy level
+      if (nodeAttrs.isMetaNode) {
+        return currentLevel === 'universe' || currentLevel === 'galaxy';
+      }
+
+      // Show if current zoom is at or past node's minimum level
+      let show = currentIdx >= nodeIdx;
+
+      // High-degree nodes visible one level earlier (hubs stay visible longer)
+      if (nodeDegree > 10 && currentIdx === nodeIdx - 1) {
+        show = true;
+      }
+
+      return show;
+    }
+
+    /**
+     * Update node visibility based on semantic zoom level.
+     * This is the core of the "universe navigation" feature.
+     */
+    function updateSemanticVisibility(cameraRatio) {
+      if (!graph || !state.semanticZoomEnabled) return;
+
+      const newLevel = getSemanticLevelFromRatio(cameraRatio);
+
+      // Update state
+      if (newLevel !== state.semanticLevel) {
+        state.semanticLevel = newLevel;
+        updateSemanticLevelUI(newLevel);
+        console.log(`[Semantic Zoom] Level: ${newLevel} (ratio: ${cameraRatio.toFixed(2)})`);
+      }
+
+      // Update node visibility
+      graph.forEachNode((id, attrs) => {
+        // Skip already hidden nodes (from other filters)
+        if (state.hiddenNodes.has(id) || state.deletedNodes.has(id)) return;
+        if (attrs.isolate && !state.showIsolates) return;
+
+        const degree = graph.degree(id);
+        const visible = shouldShowAtSemanticLevel(attrs, newLevel, degree);
+
+        // Only update if changed to avoid unnecessary redraws
+        const currentHidden = attrs.hidden || false;
+        if (visible === currentHidden) {
+          graph.setNodeAttribute(id, 'hidden', !visible);
+        }
+      });
+
+      // Update meta-node visibility separately
+      directoryMetaNodes.forEach((metaId) => {
+        if (graph.hasNode(metaId)) {
+          const showMeta = newLevel === 'universe' || newLevel === 'galaxy';
+          graph.setNodeAttribute(metaId, 'hidden', !showMeta);
+        }
+      });
+    }
+
+    /**
+     * Update the semantic level indicator in the UI.
+     */
+    function updateSemanticLevelUI(level) {
+      const indicator = document.getElementById('semantic-level-value');
+      if (indicator) {
+        const labels = {
+          universe: 'Universe (Directories)',
+          galaxy: 'Galaxy (Files)',
+          system: 'System (Classes)',
+          planet: 'Planet (All)'
+        };
+        indicator.textContent = labels[level] || level;
       }
     }
 
@@ -1087,6 +2923,7 @@
           communities.set(community, {
             id: community,
             nodes: [],
+            nodeIds: new Set(),  // For O(1) community membership lookup
             minX: Infinity,
             maxX: -Infinity,
             minY: Infinity,
@@ -1096,6 +2933,7 @@
 
         const comm = communities.get(community);
         comm.nodes.push({ id: nodeId, x: attrs.x, y: attrs.y });
+        comm.nodeIds.add(nodeId);  // Populate Set for smart labeling
         comm.minX = Math.min(comm.minX, attrs.x);
         comm.maxX = Math.max(comm.maxX, attrs.x);
         comm.minY = Math.min(comm.minY, attrs.y);
@@ -1113,6 +2951,390 @@
       });
 
       return communities;
+    }
+
+    /**
+     * Find the longest common directory path prefix.
+     * @param {string[]} paths - Array of file paths
+     * @returns {string|null} Common prefix or null
+     */
+    function longestCommonPath(paths) {
+      if (!paths || paths.length === 0) return null;
+      if (paths.length === 1) return paths[0].substring(0, paths[0].lastIndexOf('/'));
+
+      const splitPaths = paths.map(p => p.split('/'));
+      const minLen = Math.min(...splitPaths.map(p => p.length));
+
+      let commonParts = [];
+      for (let i = 0; i < minLen; i++) {
+        const segment = splitPaths[0][i];
+        if (splitPaths.every(p => p[i] === segment)) {
+          commonParts.push(segment);
+        } else {
+          break;
+        }
+      }
+
+      return commonParts.length > 0 ? commonParts.join('/') : null;
+    }
+
+    /**
+     * Extract the most common meaningful word from a list of names.
+     * @param {string[]} names - Array of identifier names
+     * @returns {string|null} Most common word or null
+     */
+    function extractCommonWord(names) {
+      const stopWords = new Set(['get', 'set', 'is', 'has', 'do', 'the', 'a', 'an', 'to', 'for', 'of', 'on', 'in', 'with']);
+      const wordCounts = {};
+
+      for (const name of names) {
+        if (!name) continue;
+        // Split camelCase, snake_case, PascalCase
+        const words = name
+          .replace(/([a-z])([A-Z])/g, '$1 $2')
+          .replace(/_/g, ' ')
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(w => w.length > 2 && !stopWords.has(w));
+
+        for (const word of words) {
+          wordCounts[word] = (wordCounts[word] || 0) + 1;
+        }
+      }
+
+      // Find most common word
+      let maxCount = 0;
+      let commonWord = null;
+      for (const [word, count] of Object.entries(wordCounts)) {
+        if (count > maxCount && count >= 2) {
+          maxCount = count;
+          commonWord = word;
+        }
+      }
+
+      return commonWord;
+    }
+
+    /**
+     * Capitalize first letter of a string.
+     */
+    function capitalize(str) {
+      return str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
+    }
+
+    /**
+     * Find the most representative node for a community.
+     * Priority: 1) Hub (highest intra-community degree), 2) Common file prefix, 3) Entry point
+     * @param {Object} community - Community object from getCommunityData()
+     * @returns {Object} { hubNode, commonPath, entryPoint, anchorLabel }
+     */
+    function findCommunityAnchor(community) {
+      if (!graph || !community.nodeIds || community.nodeIds.size === 0) return null;
+
+      // Strategy 1: Find hub node (highest intra-community connectivity)
+      let hubNode = null;
+      let maxIntraDegree = 0;
+
+      for (const nodeId of community.nodeIds) {
+        let intraDegree = 0;
+        graph.forEachEdge(nodeId, (edge, attrs, src, dst) => {
+          if (community.nodeIds.has(src) && community.nodeIds.has(dst)) {
+            intraDegree++;
+          }
+        });
+        if (intraDegree > maxIntraDegree) {
+          maxIntraDegree = intraDegree;
+          hubNode = nodeId;
+        }
+      }
+
+      // Strategy 2: Find common file/directory prefix
+      const filePaths = [];
+      for (const nodeId of community.nodeIds) {
+        const file = graph.getNodeAttribute(nodeId, 'file');
+        if (file) filePaths.push(file);
+      }
+      const commonPath = longestCommonPath(filePaths);
+
+      // Strategy 3: Find entry point (highest in-degree from outside community)
+      let entryPoint = null;
+      let maxExternalIn = 0;
+
+      for (const nodeId of community.nodeIds) {
+        let externalIn = 0;
+        graph.forEachInEdge(nodeId, (edge, attrs, src) => {
+          if (!community.nodeIds.has(src)) externalIn++;
+        });
+        if (externalIn > maxExternalIn) {
+          maxExternalIn = externalIn;
+          entryPoint = nodeId;
+        }
+      }
+
+      // Determine best anchor label
+      let anchorLabel = null;
+      if (hubNode) {
+        anchorLabel = graph.getNodeAttribute(hubNode, 'label');
+      }
+      if (!anchorLabel && commonPath) {
+        const parts = commonPath.split('/').filter(p => p && !p.startsWith('.'));
+        anchorLabel = parts.slice(-2).join('/');
+      }
+      if (!anchorLabel && entryPoint) {
+        anchorLabel = graph.getNodeAttribute(entryPoint, 'label');
+      }
+
+      return { hubNode, commonPath, entryPoint, anchorLabel, maxIntraDegree };
+    }
+
+    /**
+     * Generate a semantic label based on community characteristics.
+     * @param {Object} community - Community object with nodeIds Set
+     * @returns {string|null} Semantic label or null
+     */
+    function getSemanticLabel(community) {
+      if (!graph || !community.nodeIds || community.nodeIds.size === 0) return null;
+
+      const kinds = {};
+      const names = [];
+      const files = [];
+
+      for (const nodeId of community.nodeIds) {
+        const attrs = graph.getNodeAttributes(nodeId);
+        kinds[attrs.kind] = (kinds[attrs.kind] || 0) + 1;
+        if (attrs.label) names.push(attrs.label);
+        if (attrs.file) files.push(attrs.file);
+      }
+
+      const nodeCount = community.nodeIds.size;
+
+      // Pattern 1: Test Suite
+      const testNames = names.filter(n => n && (n.startsWith('test_') || n.startsWith('Test')));
+      const testFiles = files.filter(f => f && (f.includes('/test') || f.includes('/tests')));
+      if (testNames.length > nodeCount * 0.5 || testFiles.length > nodeCount * 0.5) {
+        return 'Test Suite';
+      }
+
+      // Pattern 2: Configuration
+      const configNames = names.filter(n => n && /^(__|setup|config|settings|init)/i.test(n));
+      if (configNames.length > nodeCount * 0.3) {
+        return 'Configuration';
+      }
+
+      // Pattern 3: Data Models
+      const modelNames = names.filter(n => n && /model|schema|entity|type|dto/i.test(n));
+      if (modelNames.length > nodeCount * 0.3) {
+        return 'Data Models';
+      }
+
+      // Pattern 4: HTTP Handlers
+      const handlerNames = names.filter(n => n && /handler|route|endpoint|controller|view/i.test(n));
+      if (handlerNames.length > nodeCount * 0.3) {
+        return 'HTTP Handlers';
+      }
+
+      // Pattern 5: Utilities
+      if ((kinds.function || 0) > 5 && (kinds.class || 0) === 0) {
+        return 'Utilities';
+      }
+
+      // Pattern 6: Service class
+      if ((kinds.class || 0) <= 2 && (kinds.method || 0) > 5) {
+        for (const nodeId of community.nodeIds) {
+          const attrs = graph.getNodeAttributes(nodeId);
+          if (attrs.kind === 'class') {
+            return `Service: ${attrs.label}`;
+          }
+        }
+        return 'OOP Module';
+      }
+
+      // Pattern 7: Common word
+      const commonWord = extractCommonWord(names);
+      if (commonWord) {
+        return capitalize(commonWord);
+      }
+
+      return null;
+    }
+
+    /**
+     * Detect design patterns within a community based on graph structure.
+     * @param {Object} community - Community object with nodeIds Set
+     * @returns {Object[]} Array of detected patterns [{type, node, details}]
+     */
+    function detectCommunityPatterns(community) {
+      if (!graph || !community.nodeIds) return [];
+      const patterns = [];
+
+      for (const nodeId of community.nodeIds) {
+        const attrs = graph.getNodeAttributes(nodeId);
+        const label = (attrs.label || '').toLowerCase();
+
+        // Factory Pattern
+        if (label.includes('factory') || label.includes('builder')) {
+          const outEdges = graph.outEdges(nodeId);
+          const callsCount = outEdges.filter(e =>
+            graph.getEdgeAttribute(e, 'kind') === 'calls'
+          ).length;
+          if (callsCount >= 2) {
+            patterns.push({
+              type: 'Factory',
+              node: nodeId,
+              details: `Creates ${callsCount} objects`
+            });
+          }
+        }
+
+        // Facade Pattern
+        let externalIn = 0, internalOut = 0;
+        graph.forEachInEdge(nodeId, (edge, attrs, src) => {
+          if (!community.nodeIds.has(src)) externalIn++;
+        });
+        graph.forEachOutEdge(nodeId, (edge, attrs, src, dst) => {
+          if (community.nodeIds.has(dst)) internalOut++;
+        });
+        if (externalIn >= 3 && internalOut >= 3) {
+          patterns.push({
+            type: 'Facade',
+            node: nodeId,
+            details: `${externalIn} external callers, delegates to ${internalOut} internal`
+          });
+        }
+
+        // Singleton Pattern
+        if (attrs.kind === 'class') {
+          let hasSingletonMethod = false;
+          for (const childId of community.nodeIds) {
+            const childAttrs = graph.getNodeAttributes(childId);
+            if (childAttrs.parent === nodeId &&
+                /getInstance|instance|shared|default/i.test(childAttrs.label || '')) {
+              hasSingletonMethod = true;
+              break;
+            }
+          }
+          if (hasSingletonMethod) {
+            patterns.push({
+              type: 'Singleton',
+              node: nodeId,
+              details: 'Has getInstance pattern'
+            });
+          }
+        }
+      }
+
+      return patterns;
+    }
+
+    /**
+     * Renders cosmic glow effects around nodes for galactic visual theme.
+     * Creates a canvas layer that renders radial gradient halos behind each visible node.
+     */
+    function renderCosmicGlow() {
+      if (!viewer || !graph || !state.showCosmicGlow) {
+        const existing = document.getElementById('cosmic-glow-layer');
+        if (existing) existing.style.display = 'none';
+        return;
+      }
+
+      const container = viewer.getContainer();
+      let canvas = document.getElementById('cosmic-glow-layer');
+
+      if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'cosmic-glow-layer';
+        canvas.style.pointerEvents = 'none';
+        canvas.style.position = 'absolute';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        // Insert after community layer but before Sigma canvas
+        const communityLayer = document.getElementById('community-layer');
+        if (communityLayer && communityLayer.nextSibling) {
+          container.insertBefore(canvas, communityLayer.nextSibling);
+        } else {
+          container.insertBefore(canvas, container.firstChild);
+        }
+      }
+
+      canvas.style.display = 'block';
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Performance: limit nodes rendered based on total count
+      const nodeCount = graph.order;
+      let maxGlowNodes, glowIntensity, glowSize;
+      if (nodeCount < 100) {
+        maxGlowNodes = 100;
+        glowIntensity = 0.5;
+        glowSize = 2.5;
+      } else if (nodeCount < 500) {
+        maxGlowNodes = 200;
+        glowIntensity = 0.4;
+        glowSize = 2.0;
+      } else if (nodeCount < 2000) {
+        maxGlowNodes = 300;
+        glowIntensity = 0.3;
+        glowSize = 1.8;
+      } else {
+        maxGlowNodes = 400;
+        glowIntensity = 0.25;
+        glowSize = 1.5;
+      }
+
+      // Collect visible nodes sorted by size (largest first for visual priority)
+      const visibleNodes = [];
+      graph.forEachNode((nodeId, attrs) => {
+        if (!attrs.hidden && !attrs.isolate) {
+          visibleNodes.push({
+            id: nodeId,
+            x: attrs.x,
+            y: attrs.y,
+            size: attrs.size || 6,
+            color: attrs.color || '#4a90d9'
+          });
+        }
+      });
+
+      // Sort by size descending to prioritize larger nodes
+      visibleNodes.sort((a, b) => b.size - a.size);
+
+      // Limit for performance
+      const nodesToRender = visibleNodes.slice(0, maxGlowNodes);
+
+      // Draw glow for each node
+      nodesToRender.forEach(node => {
+        const viewportPos = viewer.graphToViewport({ x: node.x, y: node.y });
+        const viewportSize = node.size * viewer.getCamera().ratio * 0.8;
+
+        // Skip nodes that are too small on screen
+        if (viewportSize < 1) return;
+
+        const glowRadius = viewportSize * glowSize;
+
+        // Create radial gradient for cosmic glow
+        const gradient = ctx.createRadialGradient(
+          viewportPos.x, viewportPos.y, 0,
+          viewportPos.x, viewportPos.y, glowRadius
+        );
+
+        // Parse color and create glow stops
+        const baseColor = node.color;
+        gradient.addColorStop(0, baseColor + Math.round(glowIntensity * 255).toString(16).padStart(2, '0'));
+        gradient.addColorStop(0.3, baseColor + Math.round(glowIntensity * 0.6 * 255).toString(16).padStart(2, '0'));
+        gradient.addColorStop(0.7, baseColor + Math.round(glowIntensity * 0.2 * 255).toString(16).padStart(2, '0'));
+        gradient.addColorStop(1, baseColor + '00');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(viewportPos.x, viewportPos.y, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Add subtle blur for softer glow edges
+      canvas.style.filter = 'blur(2px)';
     }
 
     /**
@@ -1134,6 +3356,10 @@
         container.insertBefore(canvas, container.firstChild);
       }
 
+      // Adaptive rendering based on node count
+      // Instead of disabling for large graphs, we adjust rendering parameters
+      const nodeCount = graph ? graph.order : 0;
+
       canvas.style.display = 'block';
       canvas.width = container.clientWidth;
       canvas.height = container.clientHeight;
@@ -1143,14 +3369,57 @@
 
       const communities = getCommunityData();
 
-      communities.forEach((comm) => {
+      // Adaptive parameters based on node count
+      let maxBackgrounds, opacityMultiplier, blurAmount;
+      if (nodeCount < 100) {
+        maxBackgrounds = 50;
+        opacityMultiplier = 1.0;
+        blurAmount = 6;
+      } else if (nodeCount < 500) {
+        maxBackgrounds = 30;
+        opacityMultiplier = 0.8;
+        blurAmount = 8;
+      } else if (nodeCount < 2000) {
+        maxBackgrounds = 20;
+        opacityMultiplier = 0.6;
+        blurAmount = 10;
+      } else {
+        // For very large graphs, show fewer backgrounds with higher blur
+        maxBackgrounds = 15;
+        opacityMultiplier = 0.4;
+        blurAmount = 12;
+      }
+
+      // Apply dynamic blur to soften overlapping backgrounds
+      canvas.style.filter = `blur(${blurAmount}px)`;
+
+      // Limit backgrounds for performance and visual clarity
+      // Sort by size (largest first) and only render top N
+      const allCommunities = Array.from(communities.values());
+      const avgCommunitySize = allCommunities.length > 0
+        ? nodeCount / allCommunities.length
+        : 0;
+
+      // Adaptive minimum size threshold based on average community size
+      // For sparse graphs (many small communities), lower the threshold
+      const minCommunitySize = avgCommunitySize < 3 ? 1 : (avgCommunitySize < 5 ? 2 : 3);
+
+      const sortedCommunities = allCommunities
+        .filter(c => c.nodes.length >= minCommunitySize)
+        .sort((a, b) => b.nodes.length - a.nodes.length);
+
+      const communitiesToRender = sortedCommunities.slice(0, maxBackgrounds);
+
+      console.log(`[Community BG] Rendering ${communitiesToRender.length}/${allCommunities.length} backgrounds for ${nodeCount} nodes (minSize: ${minCommunitySize}, avgSize: ${avgCommunitySize.toFixed(1)}, opacity: ${opacityMultiplier}, blur: ${blurAmount}px)`);
+
+      communitiesToRender.forEach((comm) => {
         const points = comm.nodes.map(node =>
           viewer.graphToViewport({ x: node.x, y: node.y })
         );
 
-        if (points.length < 2) return;
+        if (points.length === 0) return;
 
-        // Calculate center and radius
+        // Calculate center
         const center = points.reduce(
           (acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }),
           { x: 0, y: 0 }
@@ -1158,13 +3427,19 @@
         center.x /= points.length;
         center.y /= points.length;
 
-        const maxRadius = Math.max(
-          ...points.map(p =>
-            Math.sqrt((p.x - center.x) ** 2 + (p.y - center.y) ** 2)
-          )
-        );
-
-        const radius = maxRadius + 15;  // Tighter boundaries
+        // Calculate radius - handle single-node communities
+        let radius;
+        if (points.length === 1) {
+          // Single node - draw a glow with fixed radius based on zoom
+          radius = 40 + viewer.getCamera().ratio * 10;
+        } else {
+          const maxRadius = Math.max(
+            ...points.map(p =>
+              Math.sqrt((p.x - center.x) ** 2 + (p.y - center.y) ** 2)
+            )
+          );
+          radius = maxRadius + 25;  // Add padding
+        }
 
         // Render with radial gradient for cosmic effect
         const gradient = ctx.createRadialGradient(
@@ -1173,8 +3448,11 @@
         );
 
         const color = getCommunityColor(comm.id);
-        gradient.addColorStop(0, color + 'AA');    // 67% opacity at center
-        gradient.addColorStop(0.7, color + '44');  // 27% opacity at 70% radius
+        // Apply opacity multiplier for dense graphs
+        const centerOpacity = Math.round(0xAA * opacityMultiplier).toString(16).padStart(2, '0');
+        const midOpacity = Math.round(0x44 * opacityMultiplier).toString(16).padStart(2, '0');
+        gradient.addColorStop(0, color + centerOpacity);
+        gradient.addColorStop(0.7, color + midOpacity);
         gradient.addColorStop(1, color + '00');
 
         ctx.fillStyle = gradient;
@@ -1223,18 +3501,56 @@
         if (comm.nodes.length < 3) return;
 
         const pos = viewer.graphToViewport(comm.centroid);
-        const fontSize = Math.min(24, 12 + comm.nodes.length / 2);
+        const baseFontSize = Math.min(24, 12 + comm.nodes.length / 2);
 
-        ctx.font = `600 ${fontSize}px Inter, sans-serif`;
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 3;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        // Get smart labels
+        const anchor = findCommunityAnchor(comm);
+        const semantic = getSemanticLabel(comm);
+        const patterns = detectCommunityPatterns(comm);
 
-        const label = `C${comm.id} (${comm.nodes.length})`;
-        ctx.strokeText(label, pos.x, pos.y);
-        ctx.fillText(label, pos.x, pos.y);
+        // Build label lines
+        const lines = [];
+
+        // Line 1: Anchor label (concrete code artifact)
+        if (anchor && anchor.anchorLabel) {
+          lines.push({ text: anchor.anchorLabel, size: baseFontSize, color: '#00d4ff', weight: '700' });
+        }
+
+        // Line 2: Semantic label
+        if (semantic) {
+          lines.push({ text: `"${semantic}"`, size: baseFontSize * 0.8, color: '#88ccff', weight: '400' });
+        }
+
+        // Line 3: Pattern badges
+        if (patterns.length > 0) {
+          const patternText = patterns.map(p => `[${p.type}]`).join(' ');
+          lines.push({ text: patternText, size: baseFontSize * 0.7, color: '#ffaa00', weight: '600' });
+        }
+
+        // Fallback if no anchor label
+        if (lines.length === 0) {
+          lines.push({ text: `C${comm.id}`, size: baseFontSize, color: '#00d4ff', weight: '600' });
+        }
+
+        // Always show node count
+        lines.push({ text: `(${comm.nodes.length} nodes)`, size: baseFontSize * 0.6, color: '#888888', weight: '400' });
+
+        // Render multi-line label
+        const lineHeight = baseFontSize * 1.3;
+        const startY = pos.y - ((lines.length - 1) * lineHeight) / 2;
+
+        lines.forEach((line, i) => {
+          ctx.font = `${line.weight} ${line.size}px Inter, sans-serif`;
+          ctx.fillStyle = line.color;
+          ctx.strokeStyle = '#001a33';
+          ctx.lineWidth = 3;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          const y = startY + i * lineHeight;
+          ctx.strokeText(line.text, pos.x, y);
+          ctx.fillText(line.text, pos.x, y);
+        });
       });
     }
 
@@ -1293,42 +3609,10 @@
     }
 
     // ============================================
-    // Isolate Ring Positioning
+    // Isolate Ring Positioning (wrapper that uses global variables)
     // ============================================
-    function positionIsolateRing() {
-      if (!graph || isolates.size === 0) return;
-
-      // Get bounding box of non-isolate nodes
-      let minX = Infinity, maxX = -Infinity;
-      let minY = Infinity, maxY = -Infinity;
-
-      graph.forEachNode((nodeId, attrs) => {
-        if (!isolates.has(nodeId)) {
-          minX = Math.min(minX, attrs.x);
-          maxX = Math.max(maxX, attrs.x);
-          minY = Math.min(minY, attrs.y);
-          maxY = Math.max(maxY, attrs.y);
-        }
-      });
-
-      if (!isFinite(minX)) {
-        minX = 0; maxX = 1000;
-        minY = 0; maxY = 1000;
-      }
-
-      const centerX = (minX + maxX) / 2;
-      const centerY = (minY + maxY) / 2;
-      const radius = Math.max(maxX - minX, maxY - minY) * 0.6 + 200;
-
-      // Sort isolates for deterministic positioning
-      const isolateArray = Array.from(isolates).sort();
-
-      isolateArray.forEach((nodeId, i) => {
-        const angle = (2 * Math.PI * i) / isolateArray.length - Math.PI / 2;
-        graph.setNodeAttribute(nodeId, 'x', centerX + radius * Math.cos(angle));
-        graph.setNodeAttribute(nodeId, 'y', centerY + radius * Math.sin(angle));
-      });
-    }
+    // NOTE: The main implementation is at the top of the file as positionIsolateRing(graph, isolates)
+    // This wrapper exists for backward compatibility with code that calls positionIsolateRing()
 
     // ============================================
     // Layout
@@ -1348,9 +3632,11 @@
           iterations,
           settings: {
             ...settings,
-            gravity: 1,
-            scalingRatio: 10,
+            gravity: 0.01,  // Very low gravity to spread communities apart
+            scalingRatio: 80,  // Higher scaling = more spread
             barnesHutOptimize: true,
+            strongGravityMode: false,  // Don't pull toward center
+            outboundAttractionDistribution: true,  // Better community separation
           },
         });
       }
@@ -1427,8 +3713,31 @@
       // Detect communities
       detectCommunities();
 
-      // Run layout with ForceAtlas2 to spread communities apart
-      applyLayout(graph, isolates, 200);
+      // Scale separation factor by graph size - larger graphs need more spread
+      const nodeCount = graph.order;
+      const separationFactor = Math.max(1500, Math.sqrt(nodeCount) * 50);
+      console.log(`[Layout] Using separation factor ${separationFactor.toFixed(0)} for ${nodeCount} nodes`);
+      separateCommunities(separationFactor);
+      recenterHubNodes();  // Re-center hubs after community separation
+      buildCommunityHierarchy();
+
+      // For large graphs (> 10K nodes), skip ForceAtlas2 as it pulls separated communities back together
+      // ForceAtlas2's attractive forces between connected nodes undo the community separation
+      if (nodeCount < 10000) {
+        const iterations = Math.min(500, Math.max(200, Math.floor(nodeCount / 100)));
+        console.log(`[Layout] Running ForceAtlas2 with ${iterations} iterations`);
+        applyLayout(graph, isolates, iterations);
+        recenterHubNodes();  // Re-center hubs after ForceAtlas2
+      } else {
+        console.log(`[Layout] Skipping ForceAtlas2 for large graph (${nodeCount} nodes) - community separation is sufficient`);
+        // Just position isolates in ring
+        positionIsolateRing(graph, isolates);
+      }
+
+      // Build semantic hierarchy (after layout so positions are set)
+      buildDirectoryHierarchy();
+      createDirectoryMetaNodes();
+      console.log(`[Semantic Zoom] Built hierarchy: ${directoryHierarchy?.size || 0} directories`);
 
       // Clean up old viewer
       if (viewer) {
@@ -1461,10 +3770,16 @@
 
       viewer = new SigmaConstructor(graph, container, {
         renderLabels: true,
-        labelRenderedSizeThreshold: 8,
-        labelFont: 'bold 16px Inter, system-ui, sans-serif',
-        labelSize: 16,
-        labelColor: { color: '#ffffff' },
+        renderEdgeLabels: true,
+        labelRenderedSizeThreshold: 20,  // Higher threshold - only show labels when zoomed in
+        labelSize: 42,  // Base size for labels (3x larger for readability)
+        labelFont: "Arial, sans-serif",
+        labelColor: { color: "#ffffff" },
+        labelWeight: "bold",
+        edgeLabelSize: 12,
+        edgeLabelFont: "Arial, sans-serif",
+        edgeLabelColor: { color: "#cccccc" },
+        edgeLabelWeight: "normal",
         defaultNodeColor: '#666',
         defaultEdgeColor: '#404040',
         defaultEdgeType: 'arrow',
@@ -1472,12 +3787,72 @@
         maxCameraRatio: 10,
         // Disable canvas hover rendering - use HTML tooltip instead
         hoverRenderer: () => {},
+        // Custom label renderer for larger labels with radial positioning
+        defaultDrawNodeLabel: (context, data, settings) => {
+          if (!data.label) return;
+
+          // Zoom-level label visibility: additional filtering based on camera ratio
+          if (viewer) {
+            const ratio = viewer.getCamera().getState().ratio;  // Higher = more zoomed out
+            const isHub = data.isHubNode || data.nodeCount > 0 || data.isAggregate;
+
+            // Hide non-hub labels when zoomed out (ratio > 0.5)
+            if (!isHub && ratio > 0.5) return;
+            // Hide hub labels when very zoomed out (ratio > 2.0)
+            if (isHub && ratio > 2.0) return;
+          }
+
+          const size = settings.labelSize * 2.25; // Reduced by 50%
+          const font = settings.labelWeight + " " + size + "px " + settings.labelFont;
+          context.font = font;
+          const textWidth = context.measureText(data.label).width;
+
+          // Use pre-computed labelSide attribute (set during layout based on graph coords)
+          const labelSide = data.labelSide || 'right'; // Default to right if not set
+
+          let labelX, labelY;
+          if (labelSide === 'right') {
+            // Node is on RIGHT side of graph - label extends right →
+            labelX = data.x + data.size + 5;
+          } else {
+            // Node is on LEFT side of graph - label extends left ←
+            labelX = data.x - data.size - 5 - textWidth;
+          }
+          labelY = data.y + size / 3;
+
+          context.fillStyle = settings.labelColor.color;
+          context.fillText(data.label, labelX, labelY);
+        },
+        defaultDrawEdgeLabel: (context, data, sourceData, targetData, settings) => {
+          if (!data.label) return;
+
+          const size = settings.edgeLabelSize * 5; // 5x size for edge labels (60px - same as nodes)
+          const font = settings.edgeLabelWeight + " " + size + "px " + settings.edgeLabelFont;
+
+          // Draw label at midpoint of edge
+          const x = (sourceData.x + targetData.x) / 2;
+          const y = (sourceData.y + targetData.y) / 2;
+
+          context.fillStyle = settings.edgeLabelColor.color;
+          context.font = font;
+          context.fillText(data.label, x, y);
+        },
         nodeReducer: (node, data) => {
           const isSelected = state.selectedNodes.has(node);
-          const baseSize = 5;
+          // Tier-based sizing
+          const tierSizes = {
+            'universe': 10,
+            'galaxy': 7,
+            'system': 5,
+            'planet': 3,
+          };
+          const baseSize = tierSizes[data.tier] || 4;
+          // Explicitly include labelSide to ensure it reaches the label renderer
+          const labelSide = graph.getNodeAttribute(node, 'labelSide') || 'right';
 
           return {
             ...data,
+            labelSide,
             size: isSelected ? baseSize * 2 : baseSize,
             color: isSelected ? '#ffffff' : data.color,
             borderColor: isSelected ? data.color : undefined,
@@ -1541,6 +3916,9 @@
         updateEdgeTooltipPosition(e);
       });
 
+      // Throttle for camera updates
+      let semanticUpdatePending = false;
+
       viewer.getCamera().on('updated', () => {
         const ratio = viewer.getCamera().ratio;
         const newLOD = getLODFromZoom(ratio);
@@ -1551,7 +3929,18 @@
 
         // Update community visualization on camera changes
         renderCommunityBackgrounds();
+        renderCosmicGlow();
         renderCommunityLabels();
+
+        // Throttled semantic zoom update
+        if (!semanticUpdatePending && state.semanticZoomEnabled) {
+          semanticUpdatePending = true;
+          requestAnimationFrame(() => {
+            updateSemanticVisibility(ratio);
+            viewer.refresh();
+            semanticUpdatePending = false;
+          });
+        }
       });
 
       // Apply initial projection
@@ -1561,6 +3950,7 @@
 
       // Render initial community visualization
       renderCommunityBackgrounds();
+      renderCosmicGlow();
       renderCommunityLabels();
 
       setLoading(false);
@@ -1723,6 +4113,100 @@
         return graph.getNodeAttributes(nodeId);
       },
 
+      // === Hierarchical Navigation API ===
+
+      // Get current semantic zoom level
+      getSemanticLevel: () => state.semanticLevel,
+
+      // Zoom to a semantic level
+      zoomToSemanticLevel: (level) => {
+        if (!viewer) return;
+        const ratios = { universe: 6.0, galaxy: 3.0, system: 1.0, planet: 0.3 };
+        viewer.getCamera().animate({ ratio: ratios[level] || 1 }, { duration: 300 });
+      },
+
+      // Navigate to a directory (zoom + center)
+      navigateToDirectory: (dirPath) => {
+        if (!graph) return false;
+        const nodes = [];
+        graph.forEachNode((nodeId, attrs) => {
+          if (attrs.file && attrs.file.includes(dirPath)) {
+            nodes.push(nodeId);
+          }
+        });
+        if (nodes.length > 0) {
+          window.semanticLens.centerOn(nodes);
+          window.semanticLens.zoomToSemanticLevel('galaxy');
+          return true;
+        }
+        return false;
+      },
+
+      // Navigate to a file (zoom + center + select)
+      navigateToFile: (filePath) => {
+        if (!graph) return false;
+        const nodes = [];
+        graph.forEachNode((nodeId, attrs) => {
+          if (attrs.file === filePath) {
+            nodes.push(nodeId);
+          }
+        });
+        if (nodes.length > 0) {
+          window.semanticLens.select(nodes);
+          window.semanticLens.centerOn(nodes);
+          window.semanticLens.zoomToSemanticLevel('system');
+          return true;
+        }
+        return false;
+      },
+
+      // Get directory tree for navigation
+      getDirectoryTree: () => {
+        if (!directoryHierarchy) return [];
+        const tree = [];
+        directoryHierarchy.forEach((dir, path) => {
+          tree.push({
+            path: path,
+            label: dir.label,
+            nodeCount: dir.nodes.length,
+            x: dir.x,
+            y: dir.y
+          });
+        });
+        return tree.sort((a, b) => b.nodeCount - a.nodeCount);
+      },
+
+      // Get visible nodes at current zoom level
+      getVisibleNodes: () => {
+        if (!graph) return [];
+        const visible = [];
+        graph.forEachNode((nodeId, attrs) => {
+          if (!attrs.hidden) {
+            visible.push({
+              id: nodeId,
+              label: attrs.label,
+              kind: attrs.kind,
+              file: attrs.file,
+              x: attrs.x,
+              y: attrs.y
+            });
+          }
+        });
+        return visible;
+      },
+
+      // Enable/disable semantic zoom
+      setSemanticZoomEnabled: (enabled) => {
+        state.semanticZoomEnabled = enabled;
+        document.getElementById('semantic-zoom-enabled').checked = enabled;
+        if (viewer) {
+          if (enabled) {
+            updateSemanticVisibility(viewer.getCamera().ratio);
+          }
+          viewer.refresh();
+        }
+      },
+
       // Snapshot
       snapshot: async (format = 'json') => {
         if (!viewer || !graph) return null;
@@ -1820,6 +4304,21 @@
       }
     });
 
+    /**
+     * Count total edges across all tiers in a tiered bundle.
+     * @param {Object} bundle - Tiered bundle with universe/galaxy/system/planet tiers
+     * @returns {number} Total edge count
+     */
+    function countTieredBundleEdges(bundle) {
+      let totalEdges = 0;
+      for (const tierName of ['universe', 'galaxy', 'system', 'planet']) {
+        if (bundle[tierName]?.edges) {
+          totalEdges += bundle[tierName].edges.length;
+        }
+      }
+      return totalEdges;
+    }
+
     // Fixture dropdown
     document.getElementById('fixture-select').addEventListener('change', async (e) => {
       const filename = e.target.value;
@@ -1827,10 +4326,45 @@
 
       setLoading(true);
       try {
-        const response = await fetch(`/fixtures/${filename}`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const bundle = await response.json();
-        initViewer(bundle);
+        // Try .slb2 (tiered format) first for lazy loading
+        const slb2Filename = filename.replace('.slb', '.slb2');
+        let response = await fetch(`/fixtures/${slb2Filename}`);
+        let isTiered = false;
+        let bundle = null;
+
+        if (response.ok) {
+          // Parse the .slb2 and check if it has edges
+          bundle = await response.json();
+          const edgeCount = countTieredBundleEdges(bundle);
+
+          if (edgeCount > 0) {
+            console.log(`[Fixture] Loading tiered format: ${slb2Filename} (${edgeCount} edges)`);
+            isTiered = true;
+          } else {
+            // .slb2 exists but has no edges - fall back to .slb
+            console.warn(`[Fixture] ${slb2Filename} has 0 edges, falling back to ${filename}`);
+            bundle = null;  // Clear so we load .slb instead
+          }
+        }
+
+        if (!bundle) {
+          // Either .slb2 doesn't exist or has no edges - use .slb
+          console.log(`[Fixture] Loading standard format: ${filename}`);
+          response = await fetch(`/fixtures/${filename}`);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          bundle = await response.json();
+        }
+
+        // Detect format by checking for version field (tiered bundles have version: 'v2.0')
+        if (isTiered || bundle.version === 'v2.0') {
+          console.log('[Fixture] Detected tiered bundle format');
+          await initViewerWithTieredBundle(bundle);
+        } else {
+          // Clear tiered state for regular bundles
+          tieredBundle = null;
+          loadedTiers = new Set();
+          initViewer(bundle);
+        }
       } catch (err) {
         showToast(`Failed to load fixture: ${err.message}`, 5000);
         setLoading(false);
@@ -1864,6 +4398,12 @@
     document.getElementById('show-community-bg').addEventListener('change', (e) => {
       state.showCommunityBackgrounds = e.target.checked;
       renderCommunityBackgrounds();
+      renderCosmicGlow();  // Re-render glow when backgrounds change
+    });
+
+    document.getElementById('show-cosmic-glow').addEventListener('change', (e) => {
+      state.showCosmicGlow = e.target.checked;
+      renderCosmicGlow();
     });
 
     document.getElementById('show-community-labels').addEventListener('change', (e) => {
@@ -1880,10 +4420,99 @@
       }
     });
 
+    document.getElementById('show-edge-labels').addEventListener('change', (e) => {
+      state.showEdgeLabels = e.target.checked;
+      if (viewer) {
+        viewer.setSetting('renderEdgeLabels', e.target.checked);
+        viewer.refresh();
+      }
+    });
+
     document.getElementById('fit-btn').addEventListener('click', () => {
       if (viewer) {
         viewer.getCamera().animate({ x: 0.5, y: 0.5, ratio: 1 }, { duration: 300 });
       }
+    });
+
+    // Semantic zoom toggle
+    document.getElementById('semantic-zoom-enabled').addEventListener('change', (e) => {
+      state.semanticZoomEnabled = e.target.checked;
+      if (viewer) {
+        if (state.semanticZoomEnabled) {
+          updateSemanticVisibility(viewer.getCamera().ratio);
+        } else {
+          // Show all nodes when semantic zoom is disabled
+          graph.forEachNode((id, attrs) => {
+            if (!state.hiddenNodes.has(id) && !state.deletedNodes.has(id)) {
+              if (!(attrs.isolate && !state.showIsolates)) {
+                graph.setNodeAttribute(id, 'hidden', false);
+              }
+            }
+          });
+          // Hide meta-nodes
+          directoryMetaNodes.forEach((metaId) => {
+            if (graph.hasNode(metaId)) {
+              graph.setNodeAttribute(metaId, 'hidden', true);
+            }
+          });
+        }
+        viewer.refresh();
+      }
+    });
+
+    // Semantic zoom level buttons - these set the level AND trigger tier loading
+    function setSemanticZoomLevel(level, ratio) {
+      if (!viewer) return;
+
+      // Update state
+      state.semanticLevel = level;
+      updateSemanticLevelUI(level);
+
+      // Trigger tier loading for tiered bundles
+      if (tieredBundle) {
+        if (level === 'galaxy' || level === 'system' || level === 'planet') {
+          loadTierOnDemand('galaxy');
+        }
+        if (level === 'system' || level === 'planet') {
+          loadTierOnDemand('system');
+        }
+        if (level === 'planet') {
+          loadTierOnDemand('planet');
+        }
+      }
+
+      // Animate camera to target zoom level
+      // The camera update event handler applies tier-based visibility for tiered bundles
+      viewer.getCamera().animate({ ratio }, { duration: 300 });
+
+      // Update visibility after animation
+      setTimeout(() => {
+        // For tiered bundles, tier-based visibility is handled by camera update event
+        // Only call kind-based visibility for non-tiered bundles
+        if (!tieredBundle) {
+          updateSemanticVisibility(ratio);
+        }
+        renderCommunityBackgrounds();
+        renderCosmicGlow();
+        renderCommunityLabels();
+        viewer.refresh();
+      }, 350);
+    }
+
+    document.getElementById('zoom-universe-btn').addEventListener('click', () => {
+      setSemanticZoomLevel('universe', 6.0);
+    });
+
+    document.getElementById('zoom-galaxy-btn').addEventListener('click', () => {
+      setSemanticZoomLevel('galaxy', 3.0);
+    });
+
+    document.getElementById('zoom-system-btn').addEventListener('click', () => {
+      setSemanticZoomLevel('system', 1.0);
+    });
+
+    document.getElementById('zoom-planet-btn').addEventListener('click', () => {
+      setSemanticZoomLevel('planet', 0.3);
     });
 
     document.getElementById('clear-selection-btn').addEventListener('click', () => {
