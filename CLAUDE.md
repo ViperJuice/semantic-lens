@@ -46,6 +46,10 @@ Always use a comprehensive Playwright script that:
 - Takes screenshots at each state
 - Reports any console errors
 
+### Efficiency Skills for Testing
+- Use `/smart-screenshot` — prefer `browser_snapshot()` for element discovery, `browser_take_screenshot()` only for visual verification of cosmic glow, community colors, node sizes
+- Use `/page-load-monitor` — if fixture loading fails twice, diagnose with console/network instead of retrying
+
 ### DO NOT declare a UI fix complete until:
 1. You have run the full testing script
 2. You have viewed ALL screenshots
