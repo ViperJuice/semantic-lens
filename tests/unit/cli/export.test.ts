@@ -3,7 +3,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import path from 'node:path';
 import { exportCommand } from '../../../src/cli/commands/export.js';
+
+// Resolve fixtures relative to the repo root (matches tests/e2e convention).
+const REPO_ROOT = process.cwd();
 
 describe('exportCommand', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
@@ -28,7 +32,7 @@ describe('exportCommand', () => {
 
   it('should return 1 for invalid format', async () => {
     // Create a temp config file inline test
-    const code = await exportCommand('/home/jenner/code/semantic-lens/package.json', { format: 'invalid' });
+    const code = await exportCommand(path.join(REPO_ROOT, 'package.json'), { format: 'invalid' });
     expect(code).toBe(1);
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid format'));
   });
