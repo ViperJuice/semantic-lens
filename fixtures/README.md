@@ -32,9 +32,14 @@ Create `.slb` files for repos using `treesitter-chunker`:
 ```
 
 **Requirements:**
-- `treesitter-chunker` installed at `~/code/treesitter-chunker`
-- Python 3 with dependencies installed
+- `treesitter-chunker>=3.1.0,<4` installed (local checkout or PyPI when published)
+- Python 3.12+ with dependencies installed
 - `jq` command-line JSON processor
+
+> **Pinned version:** `treesitter-chunker>=3.1.0,<4` — fixtures were last regenerated on
+> 3.1.0 (local build). The chunker public API (`chunk_file`, `SemanticLensExporter`,
+> `ASTRelationshipTracker`) is stable across 3.x; only chunk IDs/byte offsets change
+> between minor versions and require a full re-index.
 
 ### 3. Update Manifest
 After generating fixtures, refresh the manifest:
@@ -93,12 +98,13 @@ python3 -m chunker /path/to/repo \
 ## Troubleshooting
 
 ### `treesitter-chunker` not found
-Install it:
+Install the local build (>=3.1.0):
 ```bash
-cd ~/code
-git clone https://github.com/Consiliency/treesitter-chunker
-cd treesitter-chunker
-pip install -e .
+# From a local checkout (unpublished 3.1.0):
+uv pip install -e ~/code/treesitter-chunker
+
+# Or once published to PyPI:
+uv pip install "treesitter-chunker>=3.1.0,<4"
 ```
 
 ### `ModuleNotFoundError: No module named 'tree_sitter'`

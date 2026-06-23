@@ -1,10 +1,10 @@
 {
   "generatedAt": "2026-01-04T22:48:19.177Z",
-  "scanPath": "/home/jenner/code",
+  "scanPath": "~/code",
   "repos": [
     {
       "name": "Book-Vetting",
-      "path": "/home/jenner/code/Book-Vetting",
+      "path": "~/code/Book-Vetting",
       "remoteUrl": "https://github.com/ViperJuice/Book-Vetting",
       "lastCommit": "2026-01-01 23:41:24 -0500",
       "enabled": true,
@@ -12,7 +12,7 @@
     },
     {
       "name": "Code-Index-MCP",
-      "path": "/home/jenner/code/Code-Index-MCP",
+      "path": "~/code/Code-Index-MCP",
       "remoteUrl": "https://github.com/ViperJuice/Code-Index-MCP",
       "lastCommit": "2025-12-27 01:49:56 -0500",
       "enabled": true,
@@ -20,7 +20,7 @@
     },
     {
       "name": "DeepSeek-OCR_Embedder",
-      "path": "/home/jenner/code/DeepSeek-OCR_Embedder",
+      "path": "~/code/DeepSeek-OCR_Embedder",
       "remoteUrl": "https://github.com/ViperJuice/DeepSeek-OCR_Embedder",
       "lastCommit": "2025-11-11 22:17:10 +0000",
       "enabled": true,
@@ -28,7 +28,7 @@
     },
     {
       "name": "ai-dev-kit",
-      "path": "/home/jenner/code/ai-dev-kit",
+      "path": "~/code/ai-dev-kit",
       "remoteUrl": "git@github.com:ViperJuice/ai-dev-kit.git",
       "lastCommit": "2026-01-04 14:41:14 -0500",
       "enabled": true,
@@ -36,7 +36,7 @@
     },
     {
       "name": "bankrupt",
-      "path": "/home/jenner/code/bankrupt",
+      "path": "~/code/bankrupt",
       "remoteUrl": null,
       "lastCommit": "2026-01-03 23:52:09 -0500",
       "enabled": true,
@@ -44,7 +44,7 @@
     },
     {
       "name": "code-flow-template",
-      "path": "/home/jenner/code/code-flow-template",
+      "path": "~/code/code-flow-template",
       "remoteUrl": "https://github.com/ViperJuice/code-flow-template",
       "lastCommit": "2025-12-28 02:40:00 -0500",
       "enabled": true,
@@ -52,7 +52,7 @@
     },
     {
       "name": "codegraph-de",
-      "path": "/home/jenner/code/codegraph-de",
+      "path": "~/code/codegraph-de",
       "remoteUrl": "https://github.com/ViperJuice/codegraph-de",
       "lastCommit": "2025-12-28 02:57:39 -0500",
       "enabled": true,
@@ -60,7 +60,7 @@
     },
     {
       "name": "consiliency-orchestrator",
-      "path": "/home/jenner/code/consiliency-orchestrator",
+      "path": "~/code/consiliency-orchestrator",
       "remoteUrl": "git@github.com:ViperJuice/consiliency-orchestrator.git",
       "lastCommit": "2026-01-04 17:36:19 -0500",
       "enabled": true,
@@ -68,7 +68,7 @@
     },
     {
       "name": "core-graph",
-      "path": "/home/jenner/code/core-graph",
+      "path": "~/code/core-graph",
       "remoteUrl": "https://github.com/ViperJuice/core-graph",
       "lastCommit": "2025-12-28 02:57:19 -0500",
       "enabled": true,
@@ -76,7 +76,7 @@
     },
     {
       "name": "delta-pilot-bid-helper-flutter-app",
-      "path": "/home/jenner/code/delta-pilot-bid-helper-flutter-app",
+      "path": "~/code/delta-pilot-bid-helper-flutter-app",
       "remoteUrl": "https://github.com/mahant-solutions/delta-pilot-bid-helper-flutter-app.git",
       "lastCommit": "2026-01-03 17:14:30 -0500",
       "enabled": true,
@@ -84,7 +84,7 @@
     },
     {
       "name": "dotfiles",
-      "path": "/home/jenner/code/dotfiles",
+      "path": "~/code/dotfiles",
       "remoteUrl": "git@github.com:ViperJuice/dotfiles.git",
       "lastCommit": "2026-01-04 01:46:46 -0500",
       "enabled": true,
@@ -92,7 +92,7 @@
     },
     {
       "name": "graphbase",
-      "path": "/home/jenner/code/graphbase",
+      "path": "~/code/graphbase",
       "remoteUrl": "git@github.com:ViperJuice/graphbase.git",
       "lastCommit": "2025-12-31 10:52:43 -0800",
       "enabled": true,
@@ -100,7 +100,7 @@
     },
     {
       "name": "hostview",
-      "path": "/home/jenner/code/hostview",
+      "path": "~/code/hostview",
       "remoteUrl": "git@github.com:ViperJuice/hostview.git",
       "lastCommit": "2025-12-30 01:37:57 -0500",
       "enabled": true,
@@ -108,7 +108,7 @@
     },
     {
       "name": "mcp-gateway",
-      "path": "/home/jenner/code/mcp-gateway",
+      "path": "~/code/mcp-gateway",
       "remoteUrl": "https://github.com/ViperJuice/pmcp.git",
       "lastCommit": "2026-01-01 18:35:47 -0500",
       "enabled": true,
@@ -116,7 +116,7 @@
     },
     {
       "name": "navblue-extension",
-      "path": "/home/jenner/code/navblue-extension",
+      "path": "~/code/navblue-extension",
       "remoteUrl": "git@github.com:ViperJuice/navblue-extension.git",
       "lastCommit": "2026-01-03 23:51:38 -0500",
       "enabled": true,
@@ -124,7 +124,7 @@
     },
     {
       "name": "ocr-service",
-      "path": "/home/jenner/code/ocr-service",
+      "path": "~/code/ocr-service",
       "remoteUrl": "https://github.com/ViperJuice/ocr-service",
       "lastCommit": "2025-11-17 19:21:46 -0500",
       "enabled": true,
@@ -132,7 +132,7 @@
     },
     {
       "name": "otis-book-editor",
-      "path": "/home/jenner/code/otis-book-editor",
+      "path": "~/code/otis-book-editor",
       "remoteUrl": "git@github.com:ViperJuice/otis-book-editor.git",
       "lastCommit": "2026-01-04 17:35:02 -0500",
       "enabled": true,
@@ -140,7 +140,7 @@
     },
     {
       "name": "semantic-lens",
-      "path": "/home/jenner/code/semantic-lens",
+      "path": "~/code/semantic-lens",
       "remoteUrl": "git@github.com:ViperJuice/semantic-lens.git",
       "lastCommit": "2026-01-03 23:53:40 -0500",
       "enabled": true,
@@ -148,7 +148,7 @@
     },
     {
       "name": "treesitter-chunker",
-      "path": "/home/jenner/code/treesitter-chunker",
+      "path": "~/code/treesitter-chunker",
       "remoteUrl": "https://github.com/Consiliency/treesitter-chunker",
       "lastCommit": "2026-01-04 17:34:11 -0500",
       "enabled": true,
@@ -156,7 +156,7 @@
     },
     {
       "name": "zellij",
-      "path": "/home/jenner/code/zellij",
+      "path": "~/code/zellij",
       "remoteUrl": "git@github.com:ViperJuice/zellij.git",
       "lastCommit": "2025-12-29 18:52:17 -0500",
       "enabled": true,

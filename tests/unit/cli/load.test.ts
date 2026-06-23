@@ -3,7 +3,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import path from 'node:path';
 import { loadCommand } from '../../../src/cli/commands/load.js';
+
+// Resolve fixtures relative to the repo root (matches tests/e2e convention).
+const REPO_ROOT = process.cwd();
 
 describe('loadCommand', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
@@ -28,7 +32,7 @@ describe('loadCommand', () => {
 
   it('should return 1 for invalid JSON', async () => {
     // Uses a known path that exists but isn't valid JSON
-    const code = await loadCommand('/home/jenner/code/semantic-lens/package.json', {});
+    const code = await loadCommand(path.join(REPO_ROOT, 'package.json'), {});
     // package.json is valid JSON but not a valid bundle - will fail validation
     expect(code).toBe(1);
   });
